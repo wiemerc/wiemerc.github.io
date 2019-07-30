@@ -1,2 +1,1 @@
-# wiemerc.github.io
-Constantin's Blog
+### This site is currently under construction and will soon contain more interesting stuff...
