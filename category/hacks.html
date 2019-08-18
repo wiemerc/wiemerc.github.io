@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+        <meta charset="utf-8" />
+        <title>Constantin Wiemer's Blog - Hacks</title>
+        <link rel="stylesheet" href="https://wiemerc.github.io/theme/css/main.css" />
+
+        <!--[if IE]>
+            <script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+        <![endif]-->
+</head>
+
+<body id="index" class="home">
+        <header id="banner" class="body">
+                <h1><a href="https://wiemerc.github.io/">Constantin Wiemer's Blog  <strong><p>Ein Blog über coole Hacks (im ursprünglichen Sinn) und Computergeschichte</strong></a></h1>
+                <nav><ul>
+                    <li class="active"><a href="https://wiemerc.github.io/category/hacks.html">Hacks</a></li>
+                </ul>
+                </nav>
+        </header><!-- /#banner -->
+
+            <aside id="featured" class="body">
+                <article>
+                    <h1 class="entry-title"><a href="https://wiemerc.github.io/gastarbeiter-windows-programme-auf-linux-ausfuhren-teil-1.html">Gastarbeiter - Windows-Programme auf Linux ausführen - Teil 1</a></h1>
+<footer class="post-info">
+        <span>Sun 18 August 2019</span>
+
+</footer><!-- /.post-info --><h2>Einführung</h2>
+<p>Auf den ersten Blick erscheint es sicher verrückt, ein Windows-Programm auf Linux ausführen zu wollen, also einem Windows-Programm ein Windows-Betriebssystem vorzugaukeln (Windows zu emulieren). Aber in diesem Artikel werde ich zeigen, wie man genau das machen kann, und dass es noch nicht einmal so schwierig ist - zumindest wenn man sich auf einfache Programme beschränkt. Dass das überhaupt möglich ist, und nicht nur mit einfachen Programmen, zeigt ja das Projekt <a href="https://www.winehq.org/">Wine</a>, und den umgekehrten Weg gehen die neueren Versionen von Windows 10 mit dem <a href="https://de.wikipedia.org/wiki/Windows_Subsystem_for_Linux">Windows Subsystem for Linux (WSL)</a>. Ausserdem hatte ich vor einiger Zeit einen <a href="https://github.com/wiemerc/VADM">Emulator für AmigaOS</a> geschrieben, das heisst eine Software, die Programme, die für den <a href="https://de.wikipedia.org/wiki/Amiga">Commodore Amiga</a> entwickelt wurden, auf Linux und macOS ausführt. Ich hatte also schon etwas Erfahrung mit der Emulation eines Betriebssystems gesammelt.</p>
+<p>Abgesehen davon, dass ich sehen wollte, ob ich das wirklich hinbekomme, hat mich das Projekt auch deshalb gereizt, weil ich schon immer mal verstehen wollte, was eigentlich beim Starten eines Programmes genau passiert. Ausserdem war das Projekt eine gute (wenn auch etwas unkonventionelle) Möglichkeit, Windows besser kennenzulernen. Und in irgendwelchen Strukturen des Betriebssystems "herumzuwühlen" hat mir auch schon immer Spass gemacht - Gelegenheit dazu gab es in diesem Projekt genügend, wie wir noch sehen werden.</p>
+<p>Bei dem Namen des Projekts, <em>Windows on Linux</em> oder WoL habe ich mich übrigens von WoW inspirieren lassen, einer Komponente in den 32-Bit-Versionen von Windows, die es ermöglicht, 16-bittige Windows-Programme auszuführen, die also ein Windows 3.1 emuliert.</p>
+<p>Bei den Programmen, die ich zum Testen von WoL verwendet habe, handelt es sich um zwei ganz einfache Programme, nämlich <code>strtoupper.exe</code>, das einen String in Grossbuchstaben umwandelt und gänzlich ohne Aufrufe des Betriebssystems auskommt, und <code>winhello.exe</code>, das den String <code>Hello, Windows</code> ausgibt. Bei beiden Programmen handelt es sich um 32-Bit-Programme.</p>
+<p>Was ist denn nun alles notwendig, um ein Windows-Programm auf Linux auszuführen? Oder anders ausgedrückt, was sind denn die Unterschiede zwischen einem Windows- und einem Linux-Programm? Dabei gehe ich im folgenden davon aus, dass Windows und Linux beide auf der gleichen Prozessorarchitektur laufen, nämlich Intel x86-64.</p>
+<h2>Emulation der API / ABI</h2>
+<p>Der erste Unterschied ist die Schnittstelle zwischen einem Programm und dem Betriebssystem, und zwar sowohl die <a href="https://de.wikipedia.org/wiki/Programmierschnittstelle">API</a>, also die Systemroutinen, die das Betriebssystem zur Verfügung stellt, als auch die <a href="https://de.wikipedia.org/wiki/Binärschnittstelle">ABI</a>, die unter anderem die Aufrufkonventionen für Funktionen und den Mechanismus für Systemaufrufe festlegt. Um also ein Windows-Programm auf Linux ausführen zu können muss die API von Windows emuliert werden, (zumindest der Teil, den das Programm verwendet), und das so, wie es die ABI vorgibt.</p>
+<p>Was bedeutet das nun konkret? Man muss dazu wissen, dass Systemroutinen letztendlich keine normale Funktionen sind sondern einen <a href="https://de.wikipedia.org/wiki/Systemaufruf">Systemaufruf</a> darstellen. Der genaue Mechanismus dafür ist abhängig vom Betriebssystem und der Prozessorarchitektur. Warum aber lassen sich Systemroutinen dann doch in Programmen wie gewöhnliche Funktionen aufrufen? Die Antwort ist, dass es für all diese Routinen sogenannte <a href="https://de.wikipedia.org/wiki/Stub_(Programmierung)">Stubs</a> in einer Bibliothek gibt, die dann den eigentlichen Systemaufruf durchführen. Die Bibliothek bildet also das Bindeglied zwischen dem Betriebssystem und dem Programm. Dadurch müssen weder der Programmierer noch der Compiler den genauen Mechanismus für einen Systemaufruf kennen. Auf Linux übernimmt diese Aufgabe die C-Standardbibliothek, auf Windows die Bibliothek <code>KERNEL32.DLL</code>, die wiederum die <code>NTDLL.DLL</code> verwendet. </p>
+<p>Um nun die Windows API für die Testprogramme auf Linux zu emulieren habe ich eine eigene, sehr einfache <code>KERNEL32.DLL</code> geschrieben, die nur die beiden von den Testprogrammen benötigten Systemroutinen <code>GetStdHandle</code> und <code>WriteFile</code> zur Verfügung stellt. Diese DLL verwendet logischerweise nicht wie auf Windows die <code>NTDLL.DLL</code> sondern die Linux API, genauer gesagt die Funktion <code>write</code>, und ist somit das Bindeglied zwischen dem Windows-Programm und Linux.</p>
+<p>Das folgende Bild zeigt nochmal die durchlaufenen Komponenten wenn ein Programm eine Systemroutine verwendet, links für Windows und rechts für WoL.
+<img alt="Ablauf einer Systemroutine" src="https://wiemerc.github.io/images/syscall.svg"></p>
+<p>Der folgende Code-Schnipsel zeigt die Implementierung der Funktion <a href="https://github.com/wiemerc/WoL/blob/0916f43a3f538d9052ccfa71a3f4f3fce0edb801/libs/kernel32.c#L42"><code>WriteFile</code></a> in dieser DLL.</p>
+<div class="highlight"><pre><span></span><span class="kt">bool</span> <span class="kr">__stdcall</span> <span class="nf">WriteFile</span><span class="p">(</span>
+    <span class="n">HANDLE</span>   <span class="n">hFile</span><span class="p">,</span>
+    <span class="kt">void</span>     <span class="o">*</span><span class="n">lpBuffer</span><span class="p">,</span>
+    <span class="kt">uint32_t</span> <span class="n">nNumberOfBytesToWrite</span><span class="p">,</span>
+    <span class="kt">uint32_t</span> <span class="o">*</span><span class="n">lpNumberOfBytesWritten</span><span class="p">,</span>
+    <span class="kt">void</span>     <span class="o">*</span><span class="n">lpOverlapped</span>
+<span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int32_t</span> <span class="n">nbytes_written</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+    <span class="k">asm</span><span class="p">(</span><span class="s">&quot;movl   $4, %eax</span><span class="se">\n</span><span class="s">&quot;</span>         <span class="c1">// system call number = sys_write</span>
+        <span class="s">&quot;movl   8(%ebp), %ebx</span><span class="se">\n</span><span class="s">&quot;</span>    <span class="c1">// hFile</span>
+        <span class="s">&quot;movl   12(%ebp), %ecx</span><span class="se">\n</span><span class="s">&quot;</span>   <span class="c1">// lpBuffer</span>
+        <span class="s">&quot;movl   16(%ebp), %edx</span><span class="se">\n</span><span class="s">&quot;</span>   <span class="c1">// nNumberOfBytesToWrite</span>
+        <span class="s">&quot;int    $0x80</span><span class="se">\n</span><span class="s">&quot;</span>            <span class="c1">// jump to kernel</span>
+        <span class="s">&quot;movl   %eax, -4(%ebp)</span><span class="se">\n</span><span class="s">&quot;</span>   <span class="c1">// store return value in nbytes_written</span>
+    <span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">nbytes_written</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+        <span class="o">*</span><span class="n">lpNumberOfBytesWritten</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+        <span class="k">return</span> <span class="nb">false</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">else</span> <span class="p">{</span>
+        <span class="o">*</span><span class="n">lpNumberOfBytesWritten</span> <span class="o">=</span> <span class="p">(</span><span class="kt">uint32_t</span><span class="p">)</span> <span class="n">nbytes_written</span><span class="p">;</span>
+        <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+
+<p>Zwei Dinge sind daran bemerkenswert. Erstens wirst du wahrscheinlich (zumindest auf den ersten Blick) den Aufruf der Funktion <code>write</code> vermissen, die ich gerade erwähnt hatte. Diese Funktion wird sehr wohl aufgerufen, aber nicht so, wie man das normalerweise machen würde. Der Aufruf erfolgt nämlich durch den Inline-Assembler-Block. So sieht nämlich ein Systemaufruf für Linux auf einer x86-Architektur (32 Bit) aus, und so ist er auch in der C-Standardbibliothek implementiert. Warum mache ich das so und nutze nicht einfach für meine DLL auch die C-Standardbibliothek? Aus zwei Gründen ist das nicht möglich. Es handelt sich bei meiner DLL ja um eine Bibliothek für <em>Windows</em>, und diese würde nicht gegen die C-Standardbibliothek von Linux (normalerweise die <em>glibc</em>) sondern gegen die von Windows gelinkt werden, also die <code>MSVCRT.DLL</code>. Diese wiederum stellt aber logischerweise keine Stubs für Linux-Systemroutinen zur Verfügung. Ein weiteres Problem wäre, dass die <code>MSVCRT.DLL</code> oder der Startup-Code, der die C-Standardbibliothek initialisiert und der ebenfalls zu dem Programm gelinkt werden würde, weitere Systemroutinen aus der echten <code>KERNEL32.DLL</code> verwenden.</p>
+<p>Die zweite Besonderheit ist, dass die Funktion mit der Aufrufkonvention <code>__stdcall</code> definiert wird. Das ist die Aufrufkonvention, die von den Windows-API-Funktionen benutzt wird und bedeutet, dass die aufgerufene Funktion (also in diesem Fall <code>WriteFile</code>) vor der Rückkehr die Parameter vom Stack entfernt.</p>
+<h2>Laden des Programms</h2>
+<p>Der zweite Unterschied zwischen einem Windows- und einem Linux-Programm ist, dass Windows und Linux unterschiedliche Dateiformate für Programme nutzen, Windows verwendet die Formate PE (32 Bit) bzw. PE+ (64 Bit), Linux verwendet ELF. Der Loader von Linux, also die Komponente im Betriebssystem, die für das Laden von Programmen zuständig ist, kann daher Windows-Programme gar nicht laden. So einen Loader musste ich also selber implementieren. Das stellte sich allerdings als relativ einfach heraus, da PE so entworfen wurde , dass die ganze Programmdatei (das <em>Image</em>) mit <a href="https://en.wikipedia.org/wiki/Memory-mapped_I/O">Memory-mapped IO</a> an einem Stück in den Speicher geladen werden kann. Das bedeutet, dass die bei der Ausführung des Programms verwendeten Datenstrukturen, wie die Import- und Export-Tabellen, bereits in der Datei in sehr ähnlicher Form vorhanden sind und nicht erst beim Laden der Datei im Speicher erstellt werden müssen (im Gegensatz zu dem Vorgängerformat NE, das von den 16-Bit-Windows-Versionen verwendet wurde).</p>
+<p>Eine sehr gute Beschreibung des PE-Formats und der zugrunde liegenden Konzepte bietet der Artikel <a href="https://docs.microsoft.com/en-us/previous-versions/ms809762(v=msdn.10)">Peering Inside the PE</a>. Deswegen werde ich in diesem Artikel auch nicht auf die Details des Formats eingehen. Weitergehende Informationen findet man auch in der offiziellen PE-Spezifikation von Microsoft. <a href="https://drive.google.com/file/d/0B3_wGJkuWLytbnIxY1J5WUs4MEk/view">Hier</a> findet man ein hilfreiches Übersichtsbild, das die einzelnen Datenstrukturen und ihre Beziehungen untereinander darstellt. Die von PE verwendeten Datenstrukturen sind bei Windows in der Header-Datei <code>winnt.h</code> definiert. WoL verwendet allerdings nicht direkt diese Header-Datei sondern die benötigten Strukturen sind, basierend auf den Definitionen in <code>winnt.h</code>, in der Datei <code>wol.h</code> <a href="https://github.com/wiemerc/WoL/blob/0916f43a3f538d9052ccfa71a3f4f3fce0edb801/wol.h#L11">definiert</a>. Der Grund dafür ist, dass die Datei <code>winnt.h</code> eine Reihe von MSVC-spezifischen Konstrukten enthält, mit denen weder GCC noch Clang zurechtkommen.</p>
+<p>Sofern <a href="https://en.wikipedia.org/wiki/Address_space_layout_randomization">ASLR</a> nicht aktiviert ist wird bei PE und PE+ davon ausgegangen, dass das Programm immer an die gleiche Adresse (0x00400000) geladen wird, deswegen enthält die Programmdatei nicht zwingend <a href="https://en.wikipedia.org/wiki/Relocation_(computing)">Relocation</a>-Informationen. Bei 64-Bit-Prozessen unter Linux ist die Adresse 0x00400000 allerdings schon belegt, sie wird standardmässig auch von Linux als Basisadresse von Programmen verwendet. Damit sie für das Windows-Programm verwendet werden kann musste ich deshalb beim Linken von WoL eine andere Startadresse für das Text-Segment angeben, ich habe mich für die Adresse 0x10400000 entschieden (mit der Option <code>-Wl,-Ttext,0x10400000</code>).</p>
+<p>Es gibt je nach verwendetem Compiler / Linker unterschiedliche Ausprägungen des Formats, so erzeugt MinGW zum Beispiel im Gegensatz zum MSVC separate Segmente für die Import- und Export-Tabellen (<code>.idata</code> und <code>.edata</code>), mit dem MSVC erzeugte Programme enthalten dafür standardmässig (wenn man nicht die Linker-Option <code>/FIXED</code> angibt) doch Relocation-Informationen (in dem Segment <code>.reloc</code>).</p>
+<p>Das Laden des Programms und der verwendeten DLL(s) ist in WoL in der Funktion <a href="https://github.com/wiemerc/WoL/blob/0916f43a3f538d9052ccfa71a3f4f3fce0edb801/wol.c#L63"><code>load_image</code></a> implementiert, wobei ich mich auf PE, also auf 32-Bit-Programme, beschränkt habe. Folgende Schritte sind dafür im einzelnen notwendig.</p>
+<ol>
+<li>
+<p>Komplette Programmdatei mit Memory-mapped IO (mit der Systemroutine <code>mmap</code>) in den Speicher laden (an beliebige Adresse)</p>
+</li>
+<li>
+<p>Header lesen und überprüfen<br>
+    Interessanterweise beginnt jede Programmdatei im PE-Format mit einem kleinen MS-DOS-Programm, das, wenn man es unter MS-DOS ausführte, die Fehlermeldung "This program cannot be run in DOS mode" ausgeben würde. Wie relevant das im Jahr 2019 noch ist sei mal dahingestellt... Dieses "Feature" hat aber zur Folge, dass eine Programmdatei im PE-Format mit einem MS-DOS-Header beginnt, gefolgt von zwei Windows-spezifischen Headern (die als NT-Header bezeichnet werden weil das PE-Format 1993 mit Windows NT eingeführt wurde). Die relevanten Informationen in den Headern sind hierbei der Zeiger auf die Windows-Header im MS-DOS-Header sowie die Basisadresse des Programms und die Anzahl der Segmente in der Datei in den Windows-Headern. Sowohl der MS-DOS- als auch die Windows-Header enthalten eine Signatur, die ich in diesem Schritt zusammen mit der Grösse der Header überprüfe.</p>
+</li>
+<li>
+<p>In diesem Schritt geht es jetzt tatsächlich um das eigentliche Programm beziehungsweise um die einzelnen Segmente (Code, Daten und so weiter). Es gibt in PE eine Segment-Tabelle, über die ich iteriere und für jedes Segment folgendes mache:</p>
+<ul>
+<li>Mapping für das Segment an der vorgegebenen Adresse  = die relative virtuelle Adresse (RVA) + Basisadresse des Programms (normalerweise 0x00400000) erzeugen<br>
+    Das mache ich wieder mit <code>mmap</code> mit den Flags <code>MAP_FIXED</code>, um das Mapping an der vorgegebenen Adresse zu erzwingen und <code>MAP_ANON</code> weil es sich um ein anonymes Mapping ohne zugrunde liegende Datei handelt. Du fragst dich jetzt vielleicht warum man nicht einfach die gesamte Datei an die Basisadresse laden kann. Der Grund ist, dass sich die Offsets der Segmente in der Datei von den RVAs, also den virtuellen Adressen relativ zur Basisadresse, unterscheiden (die Offsets sind im Gegensatz zu den RVAs nicht an Seitengrenzen ausgerichtet und die Segmente damit in der Datei dichter gepackt als im Adressraum um Platz zu sparen).</li>
+<li>Daten aus der Datei in den gemappten Speicherbereich kopieren<br>
+    Weil die Offsets wie gerade erwähnt (normalerweise) nicht an Seitengrenzen ausgerichtet sind kann man ebenfalls nicht einfach die Segmente aus der Datei direkt mappen (der Offset für <code>mmap</code> muss ein Vielfaches der Seitengrösse sein und <code>mmap</code> ignoriert auch die mit <code>lseek</code> gesetzte Position in der Datei).</li>
+<li>Berechtigungen je nach Typ des Segments setzen (Das Code-Segment muss natürlich ausführbar sein, das Daten-Segment dafür beschreibbar und so weiter)</li>
+</ul>
+</li>
+<li>
+<p>Import-Tabelle bearbeiten (siehe auch den Abschnitt <a href="https://docs.microsoft.com/en-us/previous-versions/ms809762(v=msdn.10)#pe-file-imports">PE File Imports</a> in <em>Peering Inside the PE</em>)<br>
+    Die Import-Tabelle besteht aus einer Liste der von dem Programm verwendeten DLLs (Liste von <code>IMAGE_IMPORT_DESCRIPTOR</code>-Strukturen) und jeweils einer Liste der aus der DLL verwendeten Funktionen (Liste von <code>IMAGE_THUNK_DATA</code>-Unions). Im Orginalzustand (also so wie sie in der Programmdatei abgelegt ist) besteht die Funktionsliste aus RVAs (das Feld <code>AddressOfData</code> der Union), die jeweils auf eine weitere Datenstruktur (<code>IMAGE_IMPORT_BY_NAME</code>) verweisen, die den Namen der Funktion enthält. Diese Liste wird jedoch auch vom Programmcode als Sprungtabelle benutzt. Das bedeutet, dass der Aufruf einer Funktion einer DLL im Programmcode als indirekter Sprung an die in der Funktionsliste der DLL angegebene Adresse (das Feld <code>Function</code> der Union) implementiert ist. Deshalb müssen die RVAs durch Zeiger auf die eigentlichen Funktionen ersetzt werden bevor das Programm ausgeführt werden kann, was jedoch einfacher ist als wenn man die Sprungziele direkt im Code patchen müsste. Zuvor muss / müssen natürlich die verwendete(n) DLL(s) durch einen rekursiven Aufruf von <code>load_image</code> geladen werden. Dieser Aufruf gibt die Namen und die zugehörigen Adressen der von der DLL exportierten Funktionen zurück, die ich dann zum Patchen der Import-Tabelle verwende (siehe auch den Abschnitt <a href="https://docs.microsoft.com/en-us/previous-versions/ms809762(v=msdn.10)#pe-file-exports">PE File Exports</a> in <em>Peering Inside the PE</em>).</p>
+</li>
+</ol>
+<h2>Ausführen des Programms</h2>
+<p>Man sollte meinen, das Ausführen des Programms, nachdem es wie oben beschrieben in den Speicher geladen wurde, wäre trivial - einfach zu der Startadresse des Code-Segments springen. Allerdings gibt es da bei WoL eine Schwierigkeit. WoL ist ja ein 64-Bit-Programm, die Testprogramme, die ich ausführen wollte, sind (zumindest momentan) noch 32-Bit-Programme. Nun ist es aber so, dass das Ausführen von 32-Bit-Code in einem 64-Bit-Prozess standardmässig nicht funktioniert (weder auf Linux noch auf Windows). Das liegt daran, dass sich anhand der Codierung der Instruktionen nicht eindeutig sagen lässt, ob es sich bei den Instruktionen um 32-bittigen oder 64-bittigen Code handelt. Das muss man dem Prozessor explizit mitteilen. Das geschieht über den <a href="https://en.wikipedia.org/wiki/Segment_descriptor">Segment-Deskriptor</a> für das Code-Segment (also der Deskriptor, der über den Selektor im Register CS referenziert wird). Wenn in diesem Deskriptor das L-Bit gesetzt ist, wird der sogenannte <a href="https://en.wikipedia.org/wiki/X86-64#Operating_modes">Long Mode</a> aktiviert und der Code wird vom Prozessor als 64-Bit-Code interpretiert. Genau so einen Deskriptor mit gesetztem L-Bit verwenden natürlich 64-Bit-Programme (mit dem Selektor 0x33). Allerdings fand ich nach einiger Recherche heraus, dass es sowohl bei Linux als auch bei Windows noch einen zweiten Deskriptor gibt, der das L-Bit nicht gesetzt hat (mit dem Selektor 0x23). Beide Betriebssysteme bieten also eine (wenn auch undokumentierte) Möglichkeit innerhalb eines Prozesses zwischen 32- und 64-Bit-Code hin und her zu wechseln. Dazu muss man "nur" den Code mit einen sogenannten <em>Far Call</em> (also eine CALL-Instruktion, die neben der Zieladresse auch einen Segmentselektor verwendet) mit dem entsprechenden Selektor aufrufen und am Ende mit einem <em>Far Return</em>, wieder mit dem entsprechenden Selektor, zurückspringen.</p>
+<p>Ganz so einfach ist es dann in der Praxis doch nicht, es gibt noch ein paar weitere Dinge zu beachten (siehe auch <a href="https://stackoverflow.com/a/32384358">hier</a> und <a href="https://stackoverflow.com/a/41922752">hier</a>). Im Detail sieht die ganze <a href="https://github.com/wiemerc/WoL/blob/0916f43a3f538d9052ccfa71a3f4f3fce0edb801/thunk.s#L2">Prozedur</a> (die man auch als <a href="https://en.wikipedia.org/wiki/Thunk">Thunk</a> oder <a href="https://en.wikipedia.org/wiki/Trampoline_(computing)">Trampolin</a> bezeichnen kann) dann so aus:</p>
+<div class="highlight"><pre><span></span><span class="nf">.code64</span>
+<span class="nl">entry_point_thunk:</span>
+<span class="nf">push</span>    <span class="nb">rbp</span>                         <span class="c1">; save other registers</span>
+<span class="nf">push</span>    <span class="nb">rbx</span>
+<span class="nf">push</span>    <span class="nv">r12</span>
+<span class="nf">mov</span>     <span class="nv">r12</span><span class="p">,</span> <span class="nb">rsp</span>                    <span class="c1">; save RSP</span>
+<span class="nf">push</span>    <span class="nv">offset</span> <span class="nv">l_entry</span>              <span class="c1">; push address of 32-bit code as qword</span>
+<span class="nf">mov</span>     <span class="kt">dword</span> <span class="nv">ptr</span> <span class="p">[</span><span class="nb">rsp</span> <span class="o">+</span> <span class="mi">4</span><span class="p">],</span> <span class="mh">0x23</span>   <span class="c1">; overwrite the high dword with the segment selector</span>
+<span class="nf">retf</span>                                <span class="c1">; &quot;return&quot; to 32-bit code</span>
+
+<span class="nl">l_entry:</span>
+<span class="nf">.code32</span>
+<span class="nf">mov</span>     <span class="nb">esp</span><span class="p">,</span> <span class="nb">esi</span>                    <span class="c1">; load new stack address (2nd argument - stack_ptr)</span>
+<span class="nf">push</span>    <span class="nb">ss</span>                          <span class="c1">; set DS and ES to the value of SS</span>
+<span class="nf">pop</span>     <span class="nb">ds</span>
+<span class="nf">push</span>    <span class="nb">ss</span>
+<span class="nf">pop</span>     <span class="nb">es</span>
+<span class="nf">call</span>    <span class="nb">edi</span>                         <span class="c1">; call entry point of Windows program passed as 1st argument (entry_point)</span>
+<span class="nf">push</span>    <span class="mh">0x0</span>                         <span class="c1">; set DS back to 0</span>
+<span class="nf">pop</span>     <span class="nb">ds</span>
+<span class="nf">push</span>    <span class="mh">0x33</span>                        <span class="c1">; push segment selector and address of 64-bit code</span>
+<span class="nf">push</span>    <span class="nv">offset</span> <span class="nv">l_return</span>
+<span class="nf">retf</span>                                <span class="c1">; &quot;return&quot; to 64-bit code</span>
+
+<span class="nl">l_return:</span>
+<span class="nf">.code64</span>
+<span class="nf">mov</span>     <span class="nb">rsp</span><span class="p">,</span> <span class="nv">r12</span>                    <span class="c1">; restore RSP</span>
+<span class="nf">pop</span>     <span class="nv">r12</span>                         <span class="c1">; restore other registers</span>
+<span class="nf">pop</span>     <span class="nb">rbx</span>
+<span class="nf">pop</span>     <span class="nb">rbp</span>
+<span class="nf">ret</span>                                 <span class="c1">; return to main()</span>
+</pre></div>
+
+
+<p>Vom Hauptprogramm aufgerufen wird diese Routine mit <code>entry_point_thunk(&lt;real entry point&gt;, &lt;new stack pointer&gt;)</code>. Auf den ersten Blick wirst du wahrscheinlich in dem Code den erwähnten Far Call vermissen. Stattdessen verwende ich sowohl für den Aufruf des 32-Bit-Codes als auch für die Rückkehr zum 64-Bit-Code einen Far Return (die Instruktion RETF). Das mache ich weil von einem Far Call ja die Rücksprungadresse und der Segmentselektor auf dem Stack abgelegt werden, die ich dann erstmal wieder vom Stack entfernen müsste. Mit einem Far Return spare ich mir das, abgeschaut habe ich mir diesen Trick <a href="http://blog.rewolf.pl/blog/?p=102">hier</a>.</p>
+<p>Drei weitere Dinge sollte ich noch erwähnen. Erstens muss man für den 32-Bit-Code einen separaten Stack verwenden, der in den unteren 4GB des 64-Bit-Adressraums liegen muss, so dass er von dem 32-Bit-Code adressiert werden kann. Der vom Betriebssystem bereitgestellte Stack liegt an einer höheren Adresse und ist somit ungeeignet (mal abgesehen davon, dass es sowieso sinnvoll ist, für das Windows-Programm einen eigenen Stack zu verwenden). Für diesen Stack wird in <code>load_image</code> ein anonymes Mapping an der Adresse 0xff000000 mit einer Grösse von einem Megabyte angelegt, diese Adresse plus die Grösse, also 0xff001000, wird dann der obigen Routine als neuer Wert für den Stack Pointer übergeben (weil der Stack ja von oben nach unten wächst).</p>
+<p>Zweitens müssen vor dem Eintritt in die 32-Bit-Welt einige Register gesichert werden. Zum einen sind das die Register RBP und RBX. Das sind zwar 64-Bit-Register, aber die unteren Hälften, nämlich EBP und EBX, könnten auch von 32-bittigem Code genutzt werden. Was ist dann mit den anderen Registern, für die es auch ein 32-Bit-Äquivalent gibt, wie RAX, RSI, RDI und so weiter? Deren Wert muss laut der <a href="https://stackoverflow.com/a/18024743">ABI</a> für x86-64 bei einem Funktionsaufruf nicht erhalten bleiben. Zum anderen muss natürlich RSP gesichert werden weil ich ja ESP ein paar Zeilen später auf einen neuen Wert setze (um den separaten Stack zu verwenden). Logischerweise kann man RSP nicht auf dem Stack sichern (das Problem mit der Henne und dem Ei...) sondern muss einen anderen Speicherbereich (mit einer bekannten Adresse) oder ein Register dafür nutzen. Ich entschied mich für das Register R12. Das ist nämlich das erste Register, das nicht von 32-Bit-Code genutzt werden kann und dessen Wert bei einem Funktionsaufruf im 64-Bit-Code erhalten bleibt (ebenfalls in der ABI definiert). Welcher 64-Bit-Code, wirst du dich jetzt vielleicht fragen. Das Windows-Programm ist doch ein 32-Bit-Programm. Das stimmt, aber dieses Programm nutzt meine Version der <code>KERNEL32.DLL</code>. Die ist auch immer noch 32-bittig, dort wird aber die Systemroutine <code>write</code> aufgerufen und dadurch landen wir schlussendlich in dem 64-bittigen Kernel von Linux.</p>
+<p>Drittens benötigt 32-bittiger Code im Gegensatz zu 64-bittigem den Segmentselektor 0x2b in den Registern DS und ES, also für Datenzugriffe auf den Hauptspeicher (den Grund dafür kenne ich nicht). Das ist der gleiche Selektor, der sowohl im 32- als auch im 64-Bit-Mode für SS, also für Stack-Zugriffe, verwendet wird. Deswegen kopiere ich einfach den Wert von SS nach DS und ES.</p>
+<p>Auf Windows wird das Ausführen von 64-Bit-Code in einem 32-Bit-Prozess übrigens auch als <em>Heaven's Gate</em> bezeichnet (und wird unter anderem von <a href="https://en.wikipedia.org/wiki/WoW64">WoW64</a> genutzt). Ich weiss nicht, ob die obige Prozedur dann ein <em>Hell's Gate</em> darstellt ;-)</p>
+<h2>Demo des Programms</h2>
+<p>So sieht es aus wenn man eines der Testprogramme mit WoL auf einem Linux-System startet (mit aktivierten Debug-Ausgaben):</p>
+<div class="highlight"><pre><span></span>$ uname -a
+Linux debian 4.9.0-7-amd64 #1 SMP Debian 4.9.110-3+deb9u2 (2018-08-13) x86_64 GNU/Linux
+$
+$ file ./wol
+./wol: ELF 64-bit LSB executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, for GNU/Linux 2.6.32, BuildID[sha1]=61d2e70733b0209971185d83ce6d9a1e21c5d732, not stripped
+$
+$ file examples/winhello.exe libs/kernel32.dll
+examples/winhello.exe: PE32 executable (console) Intel 80386 (stripped to external PDB), for MS Windows
+libs/kernel32.dll:     PE32 executable (DLL) (console) Intel 80386 (stripped to external PDB), for MS Windows
+$
+$ ./wol examples/winhello.exe
+INFO:  loading program examples/winhello.exe
+INFO:  mapping file examples/winhello.exe into memory
+DEBUG: image mapped at address 0x7f845bfda000
+DEBUG: number of sections: 3
+DEBUG: image base address: 0x00400000
+INFO:  loading sections
+DEBUG: section .text at offset 0x00000200, 92 / 512 (virtual / on disk) bytes large, will be mapped at 0x00401000
+DEBUG: section .rdata at offset 0x00000400, 48 / 512 (virtual / on disk) bytes large, will be mapped at 0x00402000
+DEBUG: section .idata at offset 0x00000600, 116 / 512 (virtual / on disk) bytes large, will be mapped at 0x00403000
+INFO:  loading DLL kernel32.dll used by this image
+INFO:  mapping file libs/kernel32.dll into memory
+DEBUG: image mapped at address 0x7f845bfd9000
+DEBUG: number of sections: 4
+DEBUG: image base address: 0x68480000
+INFO:  loading sections
+DEBUG: section .text at offset 0x00000400, 144 / 512 (virtual / on disk) bytes large, will be mapped at 0x68481000
+DEBUG: section .rdata at offset 0x00000600, 28 / 512 (virtual / on disk) bytes large, will be mapped at 0x68482000
+DEBUG: section .edata at offset 0x00000800, 101 / 512 (virtual / on disk) bytes large, will be mapped at 0x68483000
+DEBUG: section .idata at offset 0x00000a00, 20 / 512 (virtual / on disk) bytes large, will be mapped at 0x68484000
+DEBUG: functions exported by this DLL:
+DEBUG: GetStdHandle at address 0x68481006
+DEBUG: WriteFile at address 0x68481039
+INFO:  patching addresses of imported functions into the Import Address Table (IAT)
+DEBUG: patched function GetStdHandle with address 0x68481006
+DEBUG: patched function WriteFile with address 0x68481039
+INFO:  loaded program successfully, entry point = 0x401000
+INFO:  running program...
+
+&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;
+Hello, Windows
+&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;
+
+INFO:  exit code = 1
+</pre></div>
+
+
+<p>Das nachfolgende Bild zeigt das Speicherlayout von WoL während es <code>winhello.exe</code> ausführt.
+<img alt="Speicherlayout von WoL" src="https://wiemerc.github.io/images/memmap.svg"></p>
+<h2>Noch ein paar Anmerkungen</h2>
+<h3>Handler für SIGSEGV</h3>
+<p>Es handelt sich bei diesem Projekt ja um einen Proof-of-Concept und daher hatte ich nicht den Anspruch, besonders robusten und sicheren Code zu schreiben. Trotzdem wollte ich nicht blindlings darauf vertrauen, dass die zu ladende Programmdatei korrekt ist. Da die Programmdatei mit Memory-mapped IO gelesen wird könnte eine fehlerhafte Datei zu ungültigen Speicherzugriffen führen. Um nun aber nicht bei jedem Speicherzugriff die Adresse, auf die zugegriffen wird, überprüfen zu müssen habe ich zu einem Trick gegriffen. Am Anfang der Funktion <code>load_image</code> installiere ich einen Handler für das Signal <em>SIGSEGV</em> (also das Signal, das bei einem ungültigen Speicherzugriff an den Prozess gesendet wird). Dieser Handler gibt einfach eine Fehlermeldung aus und beendet das Programm. Am Ende der Funktion wird dieser Handler wieder entfernt. Zusätzlich überprüfe ich dann doch noch an einigen Stellen, ob die Grösse von bestimmten Datenstrukturen (zum Beispiel die Datei-Header) korrekt ist und ob Zeiger auf Adressen innerhalb der in den Speicher gelesenen Datei zeigen.</p>
+<h3>Bauen der DLL und der Testprogramme mit dem Microsoft Compiler</h3>
+<p>Obwohl ich beim Entwickeln der Einfachheit halber MinGW verwendet habe können die Testprogramme auch mit dem Microsoft Compiler (MSVC) übersetzt werden. Das sind die Befehle dafür, die man am besten in einem Visual-Studio-Terminal (auf meiner Windows-10-Installation <em>x86 Native Tools Command Prompt for VS 2017</em>) ausführt:</p>
+<div class="highlight"><pre><span></span>cl strtoupper.c /link /entry:start /subsystem:console /out:strtoupper.exe.msvc
+cl winhello.c /link /entry:start /subsystem:console kernel32.lib /out:winhello.exe.msvc
+</pre></div>
+
+
+<p>Damit bin ich am Ende des ersten Teils des Artikels angelangt. Ich hoffe, ich konnte einen Teil der vielen Dinge, die ich beim Schreiben von WoL und dieses Artikels gelernt habe, weitergeben. Im zweiten Teil werde ich zeigen was, was man tun muss wenn man ein Windows-Programm an eine andere als die vorgegebene Adresse laden will. Wir werden uns also mit den schon erwähnten Relocations befassen. Ausserdem werde ich WoL eine weitere Windows-Besonderheit beibringen, nämlich das sogenannte <a href="https://docs.microsoft.com/de-de/cpp/cpp/structured-exception-handling-c-cpp?view=vs-2019">Structured Exception Handling</a>.</p>
+<p>Der vollständige Quellcode zu diesem Artikel findet sich auf <a href="https://github.com/wiemerc/WoL.git">GitHub</a> und steht unter der BSD-Lizenz.</p>                </article>
+<p class="paginator">
+    Page 1 / 1
+</p>
+            </aside><!-- /#featured -->
+            </ol><!-- /#posts-list -->
+            </section><!-- /#content -->
+        <section id="extras" class="body">
+        </section><!-- /#extras -->
+
+        <footer id="contentinfo" class="body">
+                <p>Powered by <a href="http://getpelican.com/">Pelican</a>. Theme <a href="https://github.com/blueicefield/pelican-blueidea/">blueidea</a>, inspired by the default theme.</p>
+        </footer><!-- /#contentinfo -->
+
+</body>
+</html>
