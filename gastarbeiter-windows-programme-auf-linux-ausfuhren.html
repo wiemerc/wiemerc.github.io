@@ -204,15 +204,15 @@ INFO:  exit code = 1
 <p>Es handelt sich bei diesem Projekt ja um einen Proof-of-Concept und daher hatte ich nicht den Anspruch, besonders robusten und sicheren Code zu schreiben. Trotzdem wollte ich nicht blindlings darauf vertrauen, dass die zu ladende Programmdatei korrekt ist. Da die Programmdatei mit Memory-mapped IO gelesen wird könnte eine fehlerhafte Datei zu ungültigen Speicherzugriffen führen. Um nun aber nicht bei jedem Speicherzugriff die Adresse, auf die zugegriffen wird, überprüfen zu müssen habe ich zu einem Trick gegriffen. Am Anfang der Funktion <code>load_image</code> installiere ich einen Handler für das Signal <em>SIGSEGV</em> (also das Signal, das bei einem ungültigen Speicherzugriff an den Prozess gesendet wird). Dieser Handler gibt einfach eine Fehlermeldung aus und beendet das Programm. Am Ende der Funktion wird dieser Handler wieder entfernt. Zusätzlich überprüfe ich dann doch noch an einigen Stellen, ob die Grösse von bestimmten Datenstrukturen (zum Beispiel die Datei-Header) korrekt ist und ob Zeiger auf Adressen innerhalb der in den Speicher gelesenen Datei zeigen.</p>
 <h3>Bauen der DLL und der Testprogramme mit dem Microsoft Compiler</h3>
 <p>Obwohl ich beim Entwickeln der Einfachheit halber MinGW verwendet habe können die Testprogramme auch mit dem Microsoft Compiler (MSVC) übersetzt werden. Das sind die Befehle dafür, die man am besten in einem Visual-Studio-Terminal (auf meiner Windows-10-Installation <em>x86 Native Tools Command Prompt for VS 2017</em>) ausführt:</p>
-<div class="highlight"><pre><span></span><span class="err">cl strtoupper.c /link /entry:start /subsystem:console /out:strtoupper.exe.msvc</span>
-<span class="err">cl winhello.c /link /entry:start /subsystem:console kernel32.lib /out:winhello.exe.msvc</span>
+<div class="highlight"><pre><span></span>cl strtoupper.c /link /entry:start /subsystem:console /out:strtoupper.exe.msvc
+cl winhello.c /link /entry:start /subsystem:console kernel32.lib /out:winhello.exe.msvc
 </pre></div>
 
 
 <p>Damit bin ich am Ende des Artikels angelangt. Ich hoffe, ich konnte einen Teil der vielen Dinge, die ich beim Schreiben von WoL und dieses Artikels gelernt habe, weitergeben. Der vollständige Quellcode von WoL findet sich auf <a href="https://github.com/wiemerc/WoL.git">GitHub</a> und steht unter der BSD-Lizenz.</p>
+<p>Wie immer freue ich mich über Kommentare, Anmerkungen und Fragen und bin unter der Adresse <a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#99;&#111;&#110;&#115;&#116;&#97;&#110;&#116;&#105;&#110;&#46;&#119;&#105;&#101;&#109;&#101;&#114;&#64;&#103;&#109;&#120;&#46;&#100;&#101;">&#99;&#111;&#110;&#115;&#116;&#97;&#110;&#116;&#105;&#110;&#46;&#119;&#105;&#101;&#109;&#101;&#114;&#64;&#103;&#109;&#120;&#46;&#100;&#101;</a> erreichbar.</p>
 <p>[Update 3.11.2019]
 Verweise auf einen ursprünglich geplanten zweiten Teil entfernt.</p>
-      <p>Wie immer freue ich mich über Kommentare, Anmerkungen und Fragen und bin unter der Adresse <a href="mailto:constantin.wiemer@gmx.de">constantin.wiemer@gmx.de</a> erreichbar.</p>
     </div><!-- /.entry-content -->
 
   </article>

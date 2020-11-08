@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
         <meta charset="utf-8" />
-        <title>Constantin Wiemer's Blog - Hacks</title>
+        <title>Alte Freundin - Virtuelle Maschine für Amiga-Programme</title>
         <link rel="stylesheet" href="https://wiemerc.github.io/theme/css/main.css" />
 
         <!--[if IE]>
@@ -21,14 +21,19 @@
                 </ul>
                 </nav>
         </header><!-- /#banner -->
+<section id="content" class="body">
+  <article>
+    <header>
+      <h1 class="entry-title">
+        <a href="https://wiemerc.github.io/alte-freundin-virtuelle-maschine-fur-amiga-programme.html" rel="bookmark"
+           title="Permalink to Alte Freundin - Virtuelle Maschine für Amiga-Programme">Alte Freundin - Virtuelle Maschine für Amiga-Programme</a></h1>
+    </header>
 
-            <aside id="featured" class="body">
-                <article>
-                    <h1 class="entry-title"><a href="https://wiemerc.github.io/alte-freundin-virtuelle-maschine-fur-amiga-programme.html">Alte Freundin - Virtuelle Maschine für Amiga-Programme</a></h1>
+    <div class="entry-content">
 <footer class="post-info">
         <span>Sun 08 November 2020</span>
 
-</footer><!-- /.post-info --><p>Irgendwann im Frühjahr 2016 hatte ich die Idee zu einem Projekt, das mir im ersten Moment ziemlich verrückt erschien. Ich könnte doch einen Emulator schreiben, der Programme, die für den Commodore Amiga, den Computer meiner Jugend, entwickelt worden waren, auf einem Mac oder einem Linux-Rechner ausführt. Und dieser Emulator sollte die Programme wenn möglich in ihrer binären Form, also ohne erneute Übersetzen ausführen.</p>
+</footer><!-- /.post-info -->      <p>Irgendwann im Frühjahr 2016 hatte ich die Idee zu einem Projekt, das mir im ersten Moment ziemlich verrückt erschien. Ich könnte doch einen Emulator schreiben, der Programme, die für den Commodore Amiga, den Computer meiner Jugend, entwickelt worden waren, auf einem Mac oder einem Linux-Rechner ausführt. Und dieser Emulator sollte die Programme wenn möglich in ihrer binären Form, also ohne erneute Übersetzen ausführen.</p>
 <p>Dass so etwas grundsätzlich möglich ist war mir klar. Es gibt ja einige Beispiele solcher Emulatoren, zum Beispiel die <a href="https://en.wikipedia.org/wiki/Virtual_DOS_machine">Virtual DOS Machine</a> in älteren Windows-Versionen (die dann auch als Namensgeber für das Projekt diente), das <a href="https://en.wikipedia.org/wiki/Wine_(software)">Wine-Projekt</a> oder auch <a href="https://en.wikipedia.org/wiki/Wabi_(software)">Wabi</a> von Sun Microsystems, eine Software, die Windows-3.x-Programme auf Sun's Betriebssystem Solaris ausführen konnte. Eine zusätzliche Schwierigkeit bei Amiga-Programmen war allerdings, dass der Amiga ja Prozessoren der 68000er-Familie von Motorola verwendete. Wenn mein Emulator also binärkompatibel (und nicht nur quellkompatibel) sein sollte müsste ich auch den Prozessor emulieren. Auch dafür, dass so etwas möglich ist, gibt es Beispiele. Zum Beispiel war in der Version von Windows NT für den Alpha-Prozessor von DEC ein Emulator enthalten, der Programme ausführen konnte, die für Intel-Prozessoren geschrieben worden waren. So einen Prozessor-Emulator selber zu schreiben erschien mir aber als eine zu grosse Aufgabe, um sie als Hobbyprojekt anzugehen, und ein kurzer Blick in das Datenblatt der Motorola-Prozessoren bestätigte meine Meinung. Diese Prozessoren waren für ihre Zeit eben doch schon ziemlich komplex. Nach kurzer Recherche stellte ich allerdings fest, dass es bereits einen Emulator für diese Prozessoren gibt, der einen ganz brauchbaren Eindruck machte, nämlich <a href="https://github.com/kstenerud/Musashi">Musashi</a>. Dieser Emulator wird auch von dem <a href="https://www.mamedev.org/">MAME-Projekt</a> verwendet.</p>
 <p>Mit Hilfe von Musashi schaffte ich es dann tatsächlich, so einen Emulator schreiben. Der Code dazu findet sich <a href="https://github.com/wiemerc/VADM">hier</a>. Obwohl er funktionierte (und sogar relativ mächtig war, er konnte einen Klon des von Unix und Linux bekannten <em>find</em>-Kommandos ausführen) war ich doch nicht ganz damit zufrieden weil er ja nicht vollständig meine eigene Leistung war. Einige Zeit später hörte ich dann zum ersten Mal von <a href="https://en.wikipedia.org/wiki/Dynamic_recompilation">Dynamic Recompilation</a>, auch <a href="https://en.wikipedia.org/wiki/Binary_translation">Binary Translation</a> genannt. Vielleicht könnte ich ja diese Technik nutzen, um Musashi überflüssig zu machen? Dazu sollte ich erstmal kurz erklären, wie diese Technik funktioniert. Allgemein geht es darum, den binären Code eines Programms zur Laufzeit in Maschinencode für einen Prozessor zu übersetzen. Bei dem ursprünglichen Code kann es sich dabei um <a href="https://en.wikipedia.org/wiki/Bytecode">Bytecode</a> handeln oder, wie im Fall von VADM, um Maschinencode für eine andere Prozessorarchitektur. Diese Technik wird also sowohl von virtuellen Maschinen für Sprachen, die in Bytecode übersetzt werden (wie zum Beispiel Java oder C#), verwendet als auch von Emulatoren, wobei ein Emulator ja auch eine virtuelle Maschine darstellt.</p>
 <p>Übersetzen zur Laufzeit bedeutet, dass das Übersetzen und Ausführen des Codes nicht in getrennten Schritten oder Programmen passiert. Vielmehr führt ein Programm, nämlich die virtuelle Maschine oder der Emulator beide Schritte durch, und das auch nicht nacheinander sondern abwechselnd. Das bedeutet, das zu übersetzende Programm wird in kleine "Häppchen" aufgeteilt (was das bei VADM bedeutet werden wir später sehen) und jeweils ein solches Häppchen wird zuerst übersetzt und dann sofort ausgeführt. Es handelt sich hierbei also um einen <a href="https://en.wikipedia.org/wiki/Just-in-time_compilation">Just-in-time Compiler</a>.</p>
@@ -453,32 +458,11 @@ execute.c:191        | exec_program         | INFO  | guest has exited with stat
 <p>Lu, H. J.; Matz, Michael; Girkar, Milind; Hubicka, Jan; Jaeger, Andreas; Mitchell, Mark (2018): <a href="https://github.com/hjl-tools/x86-psABI/wiki/x86-64-psABI-1.0.pdf"><em>System V Application Binary Interface, AMD64 Architecture Processor Supplement</em></a>&#160;<a class="footnote-backref" href="#fnref:system-v-abi" title="Jump back to footnote 7 in the text">&#8617;</a></p>
 </li>
 </ol>
-</div>                </article>
-            </aside><!-- /#featured -->
-                <section id="content" class="body">
-                    <h1>Other articles</h1>
-                    <ol id="posts-list" class="hfeed">
+</div>
+    </div><!-- /.entry-content -->
 
-            <li><article class="hentry">
-                <header>
-                    <h1><a href="https://wiemerc.github.io/gastarbeiter-windows-programme-auf-linux-ausfuhren.html" rel="bookmark"
-                           title="Permalink to Gastarbeiter - Windows-Programme auf Linux ausführen">Gastarbeiter - Windows-Programme auf Linux ausführen</a></h1>
-                </header>
-
-                <div class="entry-content">
-<footer class="post-info">
-        <span>Sun 18 August 2019</span>
-
-</footer><!-- /.post-info -->                <h2>Einführung</h2>
-<p>Auf den ersten Blick erscheint es sicher verrückt, ein Windows-Programm auf Linux ausführen zu wollen, also einem Windows-Programm ein Windows-Betriebssystem vorzugaukeln (Windows zu emulieren). Aber in diesem Artikel werde ich zeigen, wie man genau das machen kann, und dass es noch nicht einmal so schwierig ist - zumindest wenn man …</p>
-                <a class="readmore" href="https://wiemerc.github.io/gastarbeiter-windows-programme-auf-linux-ausfuhren.html">read more</a>
-                </div><!-- /.entry-content -->
-            </article></li>
-            </ol><!-- /#posts-list -->
-<p class="paginator">
-    Page 1 / 1
-</p>
-            </section><!-- /#content -->
+  </article>
+</section>
         <section id="extras" class="body">
         </section><!-- /#extras -->
 
