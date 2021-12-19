@@ -12,7 +12,7 @@
 
 <body id="index" class="home">
         <header id="banner" class="body">
-                <h1><a href="https://wiemerc.github.io/">Constantin Wiemer's Blog <strong><p>Ein Blog über coole Hacks (im ursprünglichen Sinn) und Computergeschichte</strong></a></h1>
+                <h1><a href="https://wiemerc.github.io/">Constantin Wiemer's Blog  <strong><p>Ein Blog über coole Hacks (im ursprünglichen Sinn) und Computergeschichte</strong></a></h1>
                 <nav><ul>
     
                         <li><a href="https://wiemerc.github.io/pages/uber-mich.html">Über mich</a></li>
@@ -46,7 +46,7 @@
 <p>Das folgende Bild zeigt nochmal die durchlaufenen Komponenten wenn ein Programm eine Systemroutine verwendet, links für Windows und rechts für WoL.
 <img alt="Ablauf einer Systemroutine" src="https://wiemerc.github.io/images/WoL/syscall.svg"></p>
 <p>Der folgende Code-Schnipsel zeigt die Implementierung der Funktion <a href="https://github.com/wiemerc/WoL/blob/0916f43a3f538d9052ccfa71a3f4f3fce0edb801/libs/kernel32.c#L42"><code>WriteFile</code></a> in dieser DLL.</p>
-<div class="highlight"><pre><span></span><span class="kt">bool</span> <span class="kr">__stdcall</span> <span class="nf">WriteFile</span><span class="p">(</span>
+<div class="highlight"><pre><span></span><code><span class="kt">bool</span> <span class="kr">__stdcall</span> <span class="n">WriteFile</span><span class="p">(</span>
     <span class="n">HANDLE</span>   <span class="n">hFile</span><span class="p">,</span>
     <span class="kt">void</span>     <span class="o">*</span><span class="n">lpBuffer</span><span class="p">,</span>
     <span class="kt">uint32_t</span> <span class="n">nNumberOfBytesToWrite</span><span class="p">,</span>
@@ -63,7 +63,7 @@
         <span class="s">&quot;int    $0x80</span><span class="se">\n</span><span class="s">&quot;</span>            <span class="c1">// jump to kernel</span>
         <span class="s">&quot;movl   %eax, -4(%ebp)</span><span class="se">\n</span><span class="s">&quot;</span>   <span class="c1">// store return value in nbytes_written</span>
     <span class="p">);</span>
-    <span class="k">if</span> <span class="p">(</span><span class="n">nbytes_written</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">nbytes_written</span> <span class="o">==</span> <span class="mi">-1</span><span class="p">)</span> <span class="p">{</span>
         <span class="o">*</span><span class="n">lpNumberOfBytesWritten</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
         <span class="k">return</span> <span class="nb">false</span><span class="p">;</span>
     <span class="p">}</span>
@@ -72,8 +72,7 @@
         <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
     <span class="p">}</span>
 <span class="p">}</span>
-</pre></div>
-
+</code></pre></div>
 
 <p>Zwei Dinge sind daran bemerkenswert. Erstens wirst du wahrscheinlich (zumindest auf den ersten Blick) den Aufruf der Funktion <code>write</code> vermissen, die ich gerade erwähnt hatte. Diese Funktion wird sehr wohl aufgerufen, aber nicht so, wie man das normalerweise machen würde. Der Aufruf erfolgt nämlich durch den Inline-Assembler-Block. So sieht nämlich ein Systemaufruf für Linux auf einer x86-Architektur (32 Bit) aus, und so ist er auch in der C-Standardbibliothek implementiert. Warum mache ich das so und nutze nicht einfach für meine DLL auch die C-Standardbibliothek? Aus zwei Gründen ist das nicht möglich. Es handelt sich bei meiner DLL ja um eine Bibliothek für <em>Windows</em>, und diese würde nicht gegen die C-Standardbibliothek von Linux (normalerweise die <em>glibc</em>) sondern gegen die von Windows gelinkt werden, also die <code>MSVCRT.DLL</code>. Diese wiederum stellt aber logischerweise keine Stubs für Linux-Systemroutinen zur Verfügung. Ein weiteres Problem wäre, dass die <code>MSVCRT.DLL</code> oder der Startup-Code, der die C-Standardbibliothek initialisiert und der ebenfalls zu dem Programm gelinkt werden würde, weitere Systemroutinen aus der echten <code>KERNEL32.DLL</code> verwenden.</p>
 <p>Die zweite Besonderheit ist, dass die Funktion mit der Aufrufkonvention <code>__stdcall</code> definiert wird. Das ist die Aufrufkonvention, die von den Windows-API-Funktionen benutzt wird und bedeutet, dass die aufgerufene Funktion (also in diesem Fall <code>WriteFile</code>) vor der Rückkehr die Parameter vom Stack entfernt.</p>
@@ -109,12 +108,12 @@
 <h2>Ausführen des Programms</h2>
 <p>Man sollte meinen, das Ausführen des Programms, nachdem es wie oben beschrieben in den Speicher geladen wurde, wäre trivial - einfach zu der Startadresse des Code-Segments springen. Allerdings gibt es da bei WoL eine Schwierigkeit. WoL ist ja ein 64-Bit-Programm, die Testprogramme, die ich ausführen wollte, sind 32-Bit-Programme. Nun ist es aber so, dass das Ausführen von 32-Bit-Code in einem 64-Bit-Prozess standardmässig nicht funktioniert (weder auf Linux noch auf Windows). Das liegt daran, dass sich anhand der Codierung der Instruktionen nicht eindeutig sagen lässt, ob es sich bei den Instruktionen um 32-bittigen oder 64-bittigen Code handelt. Das muss man dem Prozessor explizit mitteilen. Das geschieht über den <a href="https://en.wikipedia.org/wiki/Segment_descriptor">Segment-Deskriptor</a> für das Code-Segment (also der Deskriptor, der über den Selektor im Register CS referenziert wird). Wenn in diesem Deskriptor das L-Bit gesetzt ist, wird der sogenannte <a href="https://en.wikipedia.org/wiki/X86-64#Operating_modes">Long Mode</a> aktiviert und der Code wird vom Prozessor als 64-Bit-Code interpretiert. Genau so einen Deskriptor mit gesetztem L-Bit verwenden natürlich 64-Bit-Programme (mit dem Selektor 0x33). Allerdings fand ich nach einiger Recherche heraus, dass es sowohl bei Linux als auch bei Windows noch einen zweiten Deskriptor gibt, der das L-Bit nicht gesetzt hat (mit dem Selektor 0x23). Beide Betriebssysteme bieten also eine (wenn auch undokumentierte) Möglichkeit innerhalb eines Prozesses zwischen 32- und 64-Bit-Code hin und her zu wechseln. Dazu muss man "nur" den Code mit einen sogenannten <em>Far Call</em> (also eine CALL-Instruktion, die neben der Zieladresse auch einen Segmentselektor verwendet) mit dem entsprechenden Selektor aufrufen und am Ende mit einem <em>Far Return</em>, wieder mit dem entsprechenden Selektor, zurückspringen.</p>
 <p>Ganz so einfach ist es dann in der Praxis doch nicht, es gibt noch ein paar weitere Dinge zu beachten (siehe auch <a href="https://stackoverflow.com/a/32384358">hier</a> und <a href="https://stackoverflow.com/a/41922752">hier</a>). Im Detail sieht die ganze <a href="https://github.com/wiemerc/WoL/blob/0916f43a3f538d9052ccfa71a3f4f3fce0edb801/thunk.s#L2">Prozedur</a> (die man auch als <a href="https://en.wikipedia.org/wiki/Thunk">Thunk</a> oder <a href="https://en.wikipedia.org/wiki/Trampoline_(computing)">Trampolin</a> bezeichnen kann) dann so aus:</p>
-<div class="highlight"><pre><span></span><span class="nf">.code64</span>
+<div class="highlight"><pre><span></span><code><span class="nf">.code64</span>
 <span class="nl">entry_point_thunk:</span>
 <span class="nf">push</span>    <span class="nb">rbp</span>                         <span class="c1">; save other registers</span>
 <span class="nf">push</span>    <span class="nb">rbx</span>
-<span class="nf">push</span>    <span class="nv">r12</span>
-<span class="nf">mov</span>     <span class="nv">r12</span><span class="p">,</span> <span class="nb">rsp</span>                    <span class="c1">; save RSP</span>
+<span class="nf">push</span>    <span class="nb">r12</span>
+<span class="nf">mov</span>     <span class="nb">r12</span><span class="p">,</span> <span class="nb">rsp</span>                    <span class="c1">; save RSP</span>
 <span class="nf">push</span>    <span class="nv">offset</span> <span class="nv">l_entry</span>              <span class="c1">; push address of 32-bit code as qword</span>
 <span class="nf">mov</span>     <span class="kt">dword</span> <span class="nv">ptr</span> <span class="p">[</span><span class="nb">rsp</span> <span class="o">+</span> <span class="mi">4</span><span class="p">],</span> <span class="mh">0x23</span>   <span class="c1">; overwrite the high dword with the segment selector</span>
 <span class="nf">retf</span>                                <span class="c1">; &quot;return&quot; to 32-bit code</span>
@@ -135,13 +134,12 @@
 
 <span class="nl">l_return:</span>
 <span class="nf">.code64</span>
-<span class="nf">mov</span>     <span class="nb">rsp</span><span class="p">,</span> <span class="nv">r12</span>                    <span class="c1">; restore RSP</span>
-<span class="nf">pop</span>     <span class="nv">r12</span>                         <span class="c1">; restore other registers</span>
+<span class="nf">mov</span>     <span class="nb">rsp</span><span class="p">,</span> <span class="nb">r12</span>                    <span class="c1">; restore RSP</span>
+<span class="nf">pop</span>     <span class="nb">r12</span>                         <span class="c1">; restore other registers</span>
 <span class="nf">pop</span>     <span class="nb">rbx</span>
 <span class="nf">pop</span>     <span class="nb">rbp</span>
 <span class="nf">ret</span>                                 <span class="c1">; return to main()</span>
-</pre></div>
-
+</code></pre></div>
 
 <p>Vom Hauptprogramm aufgerufen wird diese Routine mit <code>entry_point_thunk(&lt;real entry point&gt;, &lt;new stack pointer&gt;)</code>. Auf den ersten Blick wirst du wahrscheinlich in dem Code den erwähnten Far Call vermissen. Stattdessen verwende ich sowohl für den Aufruf des 32-Bit-Codes als auch für die Rückkehr zum 64-Bit-Code einen Far Return (die Instruktion RETF). Das mache ich weil von einem Far Call ja die Rücksprungadresse und der Segmentselektor auf dem Stack abgelegt werden, die ich dann erstmal wieder vom Stack entfernen müsste. Mit einem Far Return spare ich mir das, abgeschaut habe ich mir diesen Trick <a href="http://blog.rewolf.pl/blog/?p=102">hier</a>.</p>
 <p>Drei weitere Dinge sollte ich noch erwähnen. Erstens muss man für den 32-Bit-Code einen separaten Stack verwenden, der in den unteren 4GB des 64-Bit-Adressraums liegen muss, so dass er von dem 32-Bit-Code adressiert werden kann. Der vom Betriebssystem bereitgestellte Stack liegt an einer höheren Adresse und ist somit ungeeignet (mal abgesehen davon, dass es sowieso sinnvoll ist, für das Windows-Programm einen eigenen Stack zu verwenden). Für diesen Stack wird in <code>load_image</code> ein anonymes Mapping an der Adresse 0xff000000 mit einer Grösse von einem Megabyte angelegt, diese Adresse plus die Grösse, also 0xff001000, wird dann der obigen Routine als neuer Wert für den Stack Pointer übergeben (weil der Stack ja von oben nach unten wächst).</p>
@@ -150,7 +148,7 @@
 <p>Auf Windows wird das Ausführen von 64-Bit-Code in einem 32-Bit-Prozess übrigens auch als <em>Heaven's Gate</em> bezeichnet (und wird unter anderem von <a href="https://en.wikipedia.org/wiki/WoW64">WoW64</a> genutzt). Ich weiss nicht, ob die obige Prozedur dann ein <em>Hell's Gate</em> darstellt ;-)</p>
 <h2>Demo des Programms</h2>
 <p>So sieht es aus wenn man eines der Testprogramme mit WoL auf einem Linux-System startet (mit aktivierten Debug-Ausgaben):</p>
-<div class="highlight"><pre><span></span>$ uname -a
+<div class="highlight"><pre><span></span><code>$ uname -a
 Linux debian 4.9.0-7-amd64 #1 SMP Debian 4.9.110-3+deb9u2 (2018-08-13) x86_64 GNU/Linux
 $
 $ file ./wol
@@ -194,8 +192,7 @@ Hello, Windows
 &lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;
 
 INFO:  exit code = 1
-</pre></div>
-
+</code></pre></div>
 
 <p>Das nachfolgende Bild zeigt das Speicherlayout von WoL während es <code>winhello.exe</code> ausführt.
 <img alt="Speicherlayout von WoL" src="https://wiemerc.github.io/images/WoL/memmap.svg"></p>
@@ -204,10 +201,9 @@ INFO:  exit code = 1
 <p>Es handelt sich bei diesem Projekt ja um einen Proof-of-Concept und daher hatte ich nicht den Anspruch, besonders robusten und sicheren Code zu schreiben. Trotzdem wollte ich nicht blindlings darauf vertrauen, dass die zu ladende Programmdatei korrekt ist. Da die Programmdatei mit Memory-mapped IO gelesen wird könnte eine fehlerhafte Datei zu ungültigen Speicherzugriffen führen. Um nun aber nicht bei jedem Speicherzugriff die Adresse, auf die zugegriffen wird, überprüfen zu müssen habe ich zu einem Trick gegriffen. Am Anfang der Funktion <code>load_image</code> installiere ich einen Handler für das Signal <em>SIGSEGV</em> (also das Signal, das bei einem ungültigen Speicherzugriff an den Prozess gesendet wird). Dieser Handler gibt einfach eine Fehlermeldung aus und beendet das Programm. Am Ende der Funktion wird dieser Handler wieder entfernt. Zusätzlich überprüfe ich dann doch noch an einigen Stellen, ob die Grösse von bestimmten Datenstrukturen (zum Beispiel die Datei-Header) korrekt ist und ob Zeiger auf Adressen innerhalb der in den Speicher gelesenen Datei zeigen.</p>
 <h3>Bauen der DLL und der Testprogramme mit dem Microsoft Compiler</h3>
 <p>Obwohl ich beim Entwickeln der Einfachheit halber MinGW verwendet habe können die Testprogramme auch mit dem Microsoft Compiler (MSVC) übersetzt werden. Das sind die Befehle dafür, die man am besten in einem Visual-Studio-Terminal (auf meiner Windows-10-Installation <em>x86 Native Tools Command Prompt for VS 2017</em>) ausführt:</p>
-<div class="highlight"><pre><span></span>cl strtoupper.c /link /entry:start /subsystem:console /out:strtoupper.exe.msvc
+<div class="highlight"><pre><span></span><code>cl strtoupper.c /link /entry:start /subsystem:console /out:strtoupper.exe.msvc
 cl winhello.c /link /entry:start /subsystem:console kernel32.lib /out:winhello.exe.msvc
-</pre></div>
-
+</code></pre></div>
 
 <p>Damit bin ich am Ende des Artikels angelangt. Ich hoffe, ich konnte einen Teil der vielen Dinge, die ich beim Schreiben von WoL und dieses Artikels gelernt habe, weitergeben. Der vollständige Quellcode von WoL findet sich auf <a href="https://github.com/wiemerc/WoL.git">GitHub</a> und steht unter der BSD-Lizenz.</p>
 <p>Wie immer freue ich mich über Kommentare, Anmerkungen und Fragen und bin unter der Adresse <a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#99;&#111;&#110;&#115;&#116;&#97;&#110;&#116;&#105;&#110;&#46;&#119;&#105;&#101;&#109;&#101;&#114;&#64;&#103;&#109;&#120;&#46;&#100;&#101;">&#99;&#111;&#110;&#115;&#116;&#97;&#110;&#116;&#105;&#110;&#46;&#119;&#105;&#101;&#109;&#101;&#114;&#64;&#103;&#109;&#120;&#46;&#100;&#101;</a> erreichbar.</p>

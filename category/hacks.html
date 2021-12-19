@@ -12,7 +12,7 @@
 
 <body id="index" class="home">
         <header id="banner" class="body">
-                <h1><a href="https://wiemerc.github.io/">Constantin Wiemer's Blog <strong><p>Ein Blog über coole Hacks (im ursprünglichen Sinn) und Computergeschichte</strong></a></h1>
+                <h1><a href="https://wiemerc.github.io/">Constantin Wiemer's Blog  <strong><p>Ein Blog über coole Hacks (im ursprünglichen Sinn) und Computergeschichte</strong></a></h1>
                 <nav><ul>
     
                         <li><a href="https://wiemerc.github.io/pages/uber-mich.html">Über mich</a></li>
@@ -34,7 +34,7 @@
 <p>Mit Hilfe von Musashi schaffte ich es dann tatsächlich, so einen Emulator schreiben. Der Code dazu findet sich <a href="https://github.com/wiemerc/VADM">hier</a>. Obwohl er funktionierte (und sogar relativ mächtig war, er konnte einen Klon des von Unix und Linux bekannten <em>find</em>-Kommandos ausführen) war ich doch nicht ganz damit zufrieden weil er ja nicht vollständig meine eigene Leistung war. Einige Zeit später hörte ich dann zum ersten Mal von <a href="https://en.wikipedia.org/wiki/Dynamic_recompilation">Dynamic Recompilation</a>, auch <a href="https://en.wikipedia.org/wiki/Binary_translation">Binary Translation</a> genannt. Vielleicht könnte ich ja diese Technik nutzen, um Musashi überflüssig zu machen? Dazu sollte ich erstmal kurz erklären, wie diese Technik funktioniert. Allgemein geht es darum, den binären Code eines Programms zur Laufzeit in Maschinencode für einen Prozessor zu übersetzen. Bei dem ursprünglichen Code kann es sich dabei um <a href="https://en.wikipedia.org/wiki/Bytecode">Bytecode</a> handeln oder, wie im Fall von VADM, um Maschinencode für eine andere Prozessorarchitektur. Diese Technik wird also sowohl von virtuellen Maschinen für Sprachen, die in Bytecode übersetzt werden (wie zum Beispiel Java oder C#), verwendet als auch von Emulatoren, wobei ein Emulator ja auch eine virtuelle Maschine darstellt.</p>
 <p>Übersetzen zur Laufzeit bedeutet, dass das Übersetzen und Ausführen des Codes nicht in getrennten Schritten oder Programmen passiert. Vielmehr führt ein Programm, nämlich die virtuelle Maschine oder der Emulator beide Schritte durch, und das auch nicht nacheinander sondern abwechselnd. Das bedeutet, das zu übersetzende Programm wird in kleine "Häppchen" aufgeteilt (was das bei VADM bedeutet werden wir später sehen) und jeweils ein solches Häppchen wird zuerst übersetzt und dann sofort ausgeführt. Es handelt sich hierbei also um einen <a href="https://en.wikipedia.org/wiki/Just-in-time_compilation">Just-in-time Compiler</a>.</p>
 <p>Als Ziel setzte ich mir schlisslich, ein einfaches, in Assembler geschriebenes Programm, das für einen Amiga mit einem Motorola-680x0-Prozessor (im folgenden Motorola-Prozessor genannt) und AmigaOS geschrieben wurde, auf einem Rechner mit Intel-x86-64-Prozessor (im folgenden Intel-Prozessor genannt) und macOS oder Linux zum Laufen zu bringen. Das ist der Quellcode dieses Programms <em>loop</em>, das dreimal den Text "Only Amiga made it possible" ausgibt. Es besteht aus 10 unterschiedlichen Instruktionen und 3 Systemroutinen.</p>
-<div class="highlight"><pre><span></span>/*
+<div class="highlight"><pre><span></span><code>/*
 * some constants
 */
 .set AbsExecBase, 4
@@ -78,8 +78,7 @@ error_no_dos:
 
     libname:    .asciz &quot;dos.library&quot;
     msg:        .asciz &quot;Only Amiga made it possible\n&quot;
-</pre></div>
-
+</code></pre></div>
 
 <p>Wie ich dieses Ziel erreicht habe beschreibt der Rest des Artikels. Beim Schreiben so eines Emulators gibt es im wesentlichen drei Aufgaben, auf die ich im folgenden näher eingehen werde. Dabei handelt es sich um das Laden des Programms, das Übersetzen des Codes und die Emulation der API (der Systemroutinen).</p>
 <h1>Laden des Programms</h1>
@@ -89,7 +88,7 @@ error_no_dos:
 <h1>Übersetzen des Codes</h1>
 <p>Nach dem Laden des Amiga-Programms muss der Programmcode übersetzt werden. Das bedeutet, dass für jede der Instruktionen für den Motorola-Prozessor eine (oder auch mehrere) entsprechende Instruktion(en) für den Intel-Prozessor erzeugt werden muss (müssen). Dabei bin ich in zwei Schritten vorgegangen. Im ersten Schritt wird die Original-Instruktion decodiert und in ihre Bestandteile, nämlich <a href="https://en.wikipedia.org/wiki/Opcode">Opcode</a>, <a href="https://en.wikipedia.org/wiki/Addressing_mode">Adressierungsart</a> und die Operanden, zerlegt. Das ist im Prinzip auch das, was ein Prozessor tun muss bevor er eine Instruktion ausführen kann. Im zweiten Schritt wird aus diesen Bestandteilen eine neue Instruktion für den Intel-Prozessor erzeugt und entsprechend codiert. Den ersten Schritt habe ich nicht vollständig selber implementiert sondern ich habe dafür Teile des Dissassemblers von Musashi verwendet. Ein Dissassembler muss nämlich die Instruktionen genauso decodieren und zerlegen, nur dass er dann die Bestandteile in lesbarer Form ausgibt. Der Dissassembler von Musashi ist so geschrieben, dass er aus dem Code eine Folge von Instruktionen erzeugt und dann für jede Instruktion mit Hilfe einer Lookup-Tabelle und dem Opcode als Index einen sogeannten Handler aufruft (wer an den Details interessiert ist kann sich die Routine <code>translate_tu</code> in der Datei <code>translate.c</code> zu Gemüte führen). Der nachfolgende Code zeigt beispielhaft einen Teil des Handlers für die Instruktion <em>MOVE</em>.</p>
 <p>Als erstes werden die beiden Operanden aus der codierten Instruktion extrahiert. In den 16 Bits des Opcodes ist der Typ der Operanden, die sogenannte effektive Adresse, angegeben, die Operanden selber sind im Speicher nach dem Opcode abgelegt. Ein Operand kann ein Register, eine Speicheradresse oder ein konstanter Wert (nur beim Quelloperanden) sein. Nachdem sowohl der Typ als auch die Operanden bei allen Instruktionen auf die gleiche Weise codiert sind habe ich dafür eine Funktion <code>extract_operand</code> geschrieben. Eine genaue Beschreibung aller Instruktionen und der Codierung derselben findet sich im <em>Motorola M68000 Family Programmer’s Reference Manual</em> (<sup id="fnref:motorola-manual"><a class="footnote-ref" href="#fn:motorola-manual">4</a></sup>).</p>
-<div class="highlight"><pre><span></span><span class="kt">uint8_t</span>  <span class="n">src_mode_reg</span> <span class="o">=</span> <span class="n">m68k_opcode</span> <span class="o">&amp;</span> <span class="mh">0x003f</span><span class="p">;</span>
+<div class="highlight"><pre><span></span><code><span class="kt">uint8_t</span>  <span class="n">src_mode_reg</span> <span class="o">=</span> <span class="n">m68k_opcode</span> <span class="o">&amp;</span> <span class="mh">0x003f</span><span class="p">;</span>
 <span class="kt">uint8_t</span>  <span class="n">dst_mode_reg</span> <span class="o">=</span> <span class="p">(</span><span class="n">m68k_opcode</span> <span class="o">&amp;</span> <span class="mh">0x0fc0</span><span class="p">)</span> <span class="o">&gt;&gt;</span> <span class="mi">6</span><span class="p">;</span>
 <span class="n">Operand</span>  <span class="n">srcop</span><span class="p">,</span> <span class="n">dstop</span><span class="p">;</span>
 <span class="kt">int</span>      <span class="n">nbytes_used</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
@@ -98,11 +97,10 @@ error_no_dos:
 <span class="c1">// destination operand has mode and register parts swapped</span>
 <span class="n">dst_mode_reg</span> <span class="o">=</span> <span class="p">((</span><span class="n">dst_mode_reg</span> <span class="o">&amp;</span> <span class="mh">0x07</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="mi">3</span><span class="p">)</span> <span class="o">|</span> <span class="p">((</span><span class="n">dst_mode_reg</span> <span class="o">&amp;</span> <span class="mh">0x38</span><span class="p">)</span> <span class="o">&gt;&gt;</span> <span class="mi">3</span><span class="p">);</span>
 <span class="n">nbytes_used</span> <span class="o">+=</span> <span class="n">extract_operand</span><span class="p">(</span><span class="n">dst_mode_reg</span><span class="p">,</span> <span class="n">inpos</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">dstop</span><span class="p">);</span>
-</pre></div>
-
+</code></pre></div>
 
 <p>Anschliessend wird mit diesen Operanden eine entsprechende Instruktion für den Intel-Prozessor (<em>MOV</em>) erzeugt. Dazu habe ich für die verschiedenen Kombinationen der Typen von Quell- und Zieloperand jeweils eine eigene Funktion geschrieben. Ähnlich wie bei den Motorola-Prozessoren besteht nicht überraschend auch bei den Intel-Prozessoren eine Instruktion aus einem Opcode (möglicherweise mit einem Prefix), dem Typ der Operanden (der durch die sogenannten ModR/M- und SIB-Bytes festgelegt wird) und den Operanden selber. Wer sich für die (relativ komplizierten) Details interessiert, dem sei das <em>Intel 64 and IA-32 Architectures Software Developer’s Manual</em> (<sup id="fnref:intel-manual"><a class="footnote-ref" href="#fn:intel-manual">5</a></sup>) (stolze 2200 Seiten) und eine hilfreiche Webseite des Bristol Community College (<sup id="fnref:encoding-instructions"><a class="footnote-ref" href="#fn:encoding-instructions">6</a></sup>) empfohlen.</p>
-<div class="highlight"><pre><span></span><span class="c1">// call the appropriate function depending on the combination of source / destination operand type</span>
+<div class="highlight"><pre><span></span><code><span class="c1">// call the appropriate function depending on the combination of source / destination operand type</span>
 <span class="k">if</span> <span class="p">((</span><span class="n">srcop</span><span class="p">.</span><span class="n">op_type</span>      <span class="o">==</span> <span class="n">OP_MEM</span><span class="p">)</span>  <span class="o">&amp;&amp;</span> <span class="p">(</span><span class="n">dstop</span><span class="p">.</span><span class="n">op_type</span> <span class="o">==</span> <span class="n">OP_DREG</span><span class="p">))</span>
     <span class="n">x86_encode_move_mem_to_dreg</span><span class="p">(</span><span class="n">srcop</span><span class="p">.</span><span class="n">op_value</span><span class="p">,</span> <span class="n">dstop</span><span class="p">.</span><span class="n">op_value</span><span class="p">,</span> <span class="n">outpos</span><span class="p">);</span>
 <span class="k">else</span> <span class="nf">if</span> <span class="p">((</span><span class="n">srcop</span><span class="p">.</span><span class="n">op_type</span> <span class="o">==</span> <span class="n">OP_IMM</span><span class="p">)</span>  <span class="o">&amp;&amp;</span> <span class="p">(</span><span class="n">dstop</span><span class="p">.</span><span class="n">op_type</span> <span class="o">==</span> <span class="n">OP_DREG</span><span class="p">))</span>
@@ -113,10 +111,9 @@ error_no_dos:
     <span class="n">x86_encode_move_dreg_to_dreg</span><span class="p">(</span><span class="n">srcop</span><span class="p">.</span><span class="n">op_value</span><span class="p">,</span> <span class="n">dstop</span><span class="p">.</span><span class="n">op_value</span><span class="p">,</span> <span class="n">outpos</span><span class="p">);</span>
 <span class="k">else</span> <span class="p">{</span>
     <span class="n">ERROR</span><span class="p">(</span><span class="s">&quot;combination of source / destination operand types %d / %d not supported&quot;</span><span class="p">,</span> <span class="n">srcop</span><span class="p">.</span><span class="n">op_type</span><span class="p">,</span> <span class="n">dstop</span><span class="p">.</span><span class="n">op_type</span><span class="p">);</span>
-    <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+    <span class="k">return</span> <span class="mi">-1</span><span class="p">;</span>
     <span class="p">}</span>
-</pre></div>
-
+</code></pre></div>
 
 <p>Schwieriger wird die Sache bei den Sprungbefehlen (<em>BCC</em>). Bei diesen Befehlen ist der Operand die Adresse im Code (absolut oder relativ), an die verzweigt werden soll (oder auch ein Offset, der zu einem Adressregister addiert wird, was dann wiederum eine Adresse ergibt). Diese Adresse, also das Sprungziel, ist aber für den übersetzten Code beim Übersetzen der Sprungbefehle noch gar nicht bekannt und <em>nicht</em> gleich der Adresse im Originalcode. Sowohl absolute als auch relative Adressen und Offsets ändern sich nämlich beim Übersetzen. Das liegt zum einen daran, dass der übersetzte Code natürlich im Speicher an einer anderen Stelle zu liegen kommt als der Originalcode. Zum anderen sind im Allgemeinen funktional identische Instruktionen bei Motorola- und Intel-Prozessoren unterschiedlich lang, bestehen also aus einer unterschiedlichen Anzahl von Bytes.</p>
 <p>Dieses Problem habe ich so gelöst, dass ich nicht das komplette Programm "in einem Rutsch" übersetze. Stattdessen unterteile ich das Programm in Blöcke, sogenannte <em>Translation Units</em> (TU), und übersetze diese einzeln. Die übersetzten Blöcke werden in einem <em>Translation Cache</em> abgelegt. Diese Methode stammt nicht von mir sondern aus einem Paper (<sup id="fnref:vmware-paper"><a class="footnote-ref" href="#fn:vmware-paper">3</a></sup>), das beschreibt, wie in VMware Binary Translation durchgeführt wird. Weil ich den Code ja zur Laufzeit des Amiga-Programms übersetzen wollte, und auch nur Code, der tatsächlich ausgeführt wird, habe ich die Methode noch etwas erweitert. Bei VADM bestehen die einzelnen Translation Units erstmal nur aus einem Stub, der sich selbst bei der ersten Verwendung der Translation Unit durch den übersetzten Code ersetzt und diesen Code dann auch gleich ausführt. Das ist ein ähnliches Prinzip wie bei einem Programm mit <a href="https://en.wikipedia.org/wiki/Overlay_(programming)">Overlays</a>. Wie das alles im Detail funktioniert ist nachfolgend anhand des Diagramms beschrieben.</p>
@@ -216,7 +213,7 @@ error_no_dos:
 <h1>Demonstration des Programms</h1>
 <p>Die folgenden Listings zeigen die Ausgabe von VADM während es das Programm <em>loop</em> ausführt, zusammen mit einigen erläuternden Kommentaren.</p>
 <p>Als erstes wird das Programm geladen:</p>
-<div class="highlight"><pre><span></span>$ ./vadm loop
+<div class="highlight"><pre><span></span><code>$ ./vadm loop
 vadm.c:26            | main                 | INFO  | loading program...
 loader.c:47          | load_program         | DEBUG | installing signal handler for SIGSEGV
 loader.c:58          | load_program         | DEBUG | mapping file &#39;loop&#39; into memory
@@ -256,28 +253,25 @@ loader.c:84          | load_program         | DEBUG | reading next block of hunk
 loader.c:192         | load_program         | DEBUG | block type is HUNK_SYMBOL
 loader.c:84          | load_program         | DEBUG | reading next block of hunk #2
 loader.c:206         | load_program         | DEBUG | block type is HUNK_END
-</pre></div>
-
+</code></pre></div>
 
 <p>Danach beginnt das Ausführen des Amiga-Programms, und zwar damit, dass die erste TU angelegt wird. Dazu ist noch zu sagen, dass das Amiga-Programm in einem separaten Prozess läuft. Der Grund dafür ist, dass ja nicht implementierte Bibliotheksroutinen wie schon erwähnt ein SIGTRAP-Signal erzeugen. Dieses Signal würde VADM normalerweise einfach beenden aber so kann der Eltern-Prozess den Tod seines Kindes feststellen und eine entsprechende Fehlermeldung ausgeben.</p>
-<div class="highlight"><pre><span></span>vadm.c:31            | main                 | INFO  | initializing translation cache and setting up first TU...
+<div class="highlight"><pre><span></span><code>vadm.c:31            | main                 | INFO  | initializing translation cache and setting up first TU...
 tlcache.c:87         | tc_put_addr          | DEBUG | putting mapping 0x100000 -&gt; 0x7feb9c3bc000 into cache
 vadm.c:39            | main                 | INFO  | executing program...
-</pre></div>
-
+</code></pre></div>
 
 <p>Hier wird zuerst noch wie schon oben erwähnt die Exec-Bibliothek geladen.</p>
-<div class="highlight"><pre><span></span>execute.c:141        | exec_program         | DEBUG | loading Exec library
+<div class="highlight"><pre><span></span><code>execute.c:141        | exec_program         | DEBUG | loading Exec library
 execute.c:108        | load_library         | DEBUG | dlopen()ing library &#39;libs/libexec.so&#39;
 execute.c:119        | load_library         | DEBUG | setting up library jump tables
 execute.c:97         | setup_jump_tables    | DEBUG | creating entry with jump and thunk for function CloseLibrary()
 execute.c:97         | setup_jump_tables    | DEBUG | creating entry with jump and thunk for function OpenLibrary()
 execute.c:164        | exec_program         | DEBUG | guest is starting...
-</pre></div>
-
+</code></pre></div>
 
 <p>Jetzt wird die erste TU übersetzt. Das endet damit, dass die zwei nachfolgenden TUs angelegt werden.</p>
-<div class="highlight"><pre><span></span>translate.c:659      | translate_tu         | DEBUG | building opcode handler table
+<div class="highlight"><pre><span></span><code>translate.c:659      | translate_tu         | DEBUG | building opcode handler table
 translate.c:670      | translate_tu         | DEBUG | translating TU with source address 0x100000 and destination address 0x7feb9c3bc000
 translate.c:683      | translate_tu         | DEBUG | looking up opcode 0x2c78 in opcode handler table
 translate.c:350      | m68k_movea           | DEBUG | translating instruction MOVEA
@@ -306,19 +300,17 @@ tlcache.c:87         | tc_put_addr          | DEBUG | putting mapping 0x100044 -
 translate.c:281      | m68k_bcc             | DEBUG | setting up TU of branch not taken
 tlcache.c:87         | tc_put_addr          | DEBUG | putting mapping 0x100016 -&gt; 0x7feb9c3bc800 into cache
 translate.c:695      | translate_tu         | DEBUG | instruction is the terminal instruction in this TU - continuing execution of guest
-</pre></div>
-
+</code></pre></div>
 
 <p>Die erste TU wird ausgeführt. In dieser TU wird die DOS-Bibliothek geöffnet.</p>
-<div class="highlight"><pre><span></span>execute.c:18         | log_func_name        | DEBUG | guest called library function OpenLibrary()
+<div class="highlight"><pre><span></span><code>execute.c:18         | log_func_name        | DEBUG | guest called library function OpenLibrary()
 execute.c:108        | load_library         | DEBUG | dlopen()ing library &#39;libs/libdos.so&#39;
 execute.c:119        | load_library         | DEBUG | setting up library jump tables
 execute.c:97         | setup_jump_tables    | DEBUG | creating entry with jump and thunk for function PutStr()
-</pre></div>
-
+</code></pre></div>
 
 <p>Die nächste TU (#3 im Diagramm oben) wird übersetzt...</p>
-<div class="highlight"><pre><span></span>translate.c:670      | translate_tu         | DEBUG | translating TU with source address 0x100016 and destination address 0x7feb9c3bc800
+<div class="highlight"><pre><span></span><code>translate.c:670      | translate_tu         | DEBUG | translating TU with source address 0x100016 and destination address 0x7feb9c3bc800
 translate.c:683      | translate_tu         | DEBUG | looking up opcode 0x23c0 in opcode handler table
 translate.c:400      | m68k_move            | DEBUG | translating instruction MOVE
 translate.c:60       | extract_operand      | DEBUG | operand is register D0
@@ -351,17 +343,15 @@ tlcache.c:87         | tc_put_addr          | DEBUG | putting mapping 0x100024 -
 translate.c:281      | m68k_bcc             | DEBUG | setting up TU of branch not taken
 tlcache.c:87         | tc_put_addr          | DEBUG | putting mapping 0x100032 -&gt; 0x7feb9c3bd000 into cache
 translate.c:695      | translate_tu         | DEBUG | instruction is the terminal instruction in this TU - continuing execution of guest
-</pre></div>
-
+</code></pre></div>
 
 <p>...und ausgeführt. Hier wird die Schleife zum ersten Mal durchlaufen und der Text ausgegeben.</p>
-<div class="highlight"><pre><span></span>execute.c:18         | log_func_name        | DEBUG | guest called library function PutStr()
+<div class="highlight"><pre><span></span><code>execute.c:18         | log_func_name        | DEBUG | guest called library function PutStr()
 &gt;&gt;&gt; Only Amiga made it possible
-</pre></div>
-
+</code></pre></div>
 
 <p>Die nächste TU (#4) wird übersetzt. Die nachfolgenden TUs (#4 selber weil es sich ja um eine Schleife handelt und #5) befinden sich dieses Mal schon im Translation Cache, deswegen müssen sie nicht mehr angelegt werden.</p>
-<div class="highlight"><pre><span></span>translate.c:670      | translate_tu         | DEBUG | translating TU with source address 0x100024 and destination address 0x7feb9c3bcc00
+<div class="highlight"><pre><span></span><code>translate.c:670      | translate_tu         | DEBUG | translating TU with source address 0x100024 and destination address 0x7feb9c3bcc00
 translate.c:683      | translate_tu         | DEBUG | looking up opcode 0x223c in opcode handler table
 translate.c:400      | m68k_move            | DEBUG | translating instruction MOVE
 translate.c:96       | extract_operand      | DEBUG | operand is immediate value 0x0011000c
@@ -382,19 +372,17 @@ translate.c:607      | setup_tu             | DEBUG | TU with source address 0x1
 translate.c:281      | m68k_bcc             | DEBUG | setting up TU of branch not taken
 translate.c:607      | setup_tu             | DEBUG | TU with source address 0x100032 is already in the cache - nothing to do
 translate.c:695      | translate_tu         | DEBUG | instruction is the terminal instruction in this TU - continuing execution of guest
-</pre></div>
-
+</code></pre></div>
 
 <p>Die TU wird zweimal ausgeführt. Dann wird die Schleife verlassen.</p>
-<div class="highlight"><pre><span></span>execute.c:18         | log_func_name        | DEBUG | guest called library function PutStr()
+<div class="highlight"><pre><span></span><code>execute.c:18         | log_func_name        | DEBUG | guest called library function PutStr()
 &gt;&gt;&gt; Only Amiga made it possible
 execute.c:18         | log_func_name        | DEBUG | guest called library function PutStr()
 &gt;&gt;&gt; Only Amiga made it possible
-</pre></div>
-
+</code></pre></div>
 
 <p>Die letzte TU (#5) wird übersetzt und ausgeführt.</p>
-<div class="highlight"><pre><span></span>translate.c:670      | translate_tu         | DEBUG | translating TU with source address 0x100032 and destination address 0x7feb9c3bd000
+<div class="highlight"><pre><span></span><code>translate.c:670      | translate_tu         | DEBUG | translating TU with source address 0x100032 and destination address 0x7feb9c3bd000
 translate.c:683      | translate_tu         | DEBUG | looking up opcode 0x2c78 in opcode handler table
 translate.c:350      | m68k_movea           | DEBUG | translating instruction MOVEA
 translate.c:355      | m68k_movea           | DEBUG | destination register is A6
@@ -416,8 +404,7 @@ translate.c:695      | translate_tu         | DEBUG | instruction is the termina
 execute.c:18         | log_func_name        | DEBUG | guest called library function CloseLibrary()
 execute.c:166        | exec_program         | DEBUG | guest is terminating...
 execute.c:191        | exec_program         | INFO  | guest has exited with status 0
-</pre></div>
-
+</code></pre></div>
 
 <h1>Noch ein paar Anmerkungen zur Entwicklung</h1>
 <p>Wie du dir wahrscheinlich vorstellen kannst ist das Entwickeln eines solchen Programms kein ganz einfaches Unterfangen. Nachfolgend möchte ich ein paar Dinge erwähnen, die mir dabei geholfen haben.</p>
