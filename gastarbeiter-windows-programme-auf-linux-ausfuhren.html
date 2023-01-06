@@ -12,12 +12,12 @@
 
 <body id="index" class="home">
         <header id="banner" class="body">
-                <h1><a href="https://wiemerc.github.io/">Constantin Wiemer's Blog  <strong><p>Ein Blog über coole Hacks (im ursprünglichen Sinn) und Computergeschichte</strong></a></h1>
+                <h1><a href="https://wiemerc.github.io/">Constantin Wiemer's Blog  <strong><p>Ein Blog über meine Programmierprojekte und vielleicht auch mal über Computergeschichte</strong></a></h1>
                 <nav><ul>
     
                         <li><a href="https://wiemerc.github.io/pages/uber-mich.html">Über mich</a></li>
                     <li><a href="https://wiemerc.github.io/category/computergeschichte.html">Computergeschichte</a></li>
-                    <li class="active"><a href="https://wiemerc.github.io/category/hacks.html">Hacks</a></li>
+                    <li class="active"><a href="https://wiemerc.github.io/category/projekte.html">Projekte</a></li>
                 </ul>
                 </nav>
         </header><!-- /#banner -->
@@ -46,32 +46,32 @@
 <p>Das folgende Bild zeigt nochmal die durchlaufenen Komponenten wenn ein Programm eine Systemroutine verwendet, links für Windows und rechts für WoL.
 <img alt="Ablauf einer Systemroutine" src="https://wiemerc.github.io/images/WoL/syscall.svg"></p>
 <p>Der folgende Code-Schnipsel zeigt die Implementierung der Funktion <a href="https://github.com/wiemerc/WoL/blob/0916f43a3f538d9052ccfa71a3f4f3fce0edb801/libs/kernel32.c#L42"><code>WriteFile</code></a> in dieser DLL.</p>
-<div class="highlight"><pre><span></span><code><span class="kt">bool</span> <span class="kr">__stdcall</span> <span class="n">WriteFile</span><span class="p">(</span>
-    <span class="n">HANDLE</span>   <span class="n">hFile</span><span class="p">,</span>
-    <span class="kt">void</span>     <span class="o">*</span><span class="n">lpBuffer</span><span class="p">,</span>
-    <span class="kt">uint32_t</span> <span class="n">nNumberOfBytesToWrite</span><span class="p">,</span>
-    <span class="kt">uint32_t</span> <span class="o">*</span><span class="n">lpNumberOfBytesWritten</span><span class="p">,</span>
-    <span class="kt">void</span>     <span class="o">*</span><span class="n">lpOverlapped</span>
-<span class="p">)</span>
-<span class="p">{</span>
-    <span class="kt">int32_t</span> <span class="n">nbytes_written</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<div class="highlight"><pre><span></span><code><span class="kt">bool</span><span class="w"> </span><span class="kr">__stdcall</span><span class="w"> </span><span class="n">WriteFile</span><span class="p">(</span><span class="w"></span>
+<span class="w">    </span><span class="n">HANDLE</span><span class="w">   </span><span class="n">hFile</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="kt">void</span><span class="w">     </span><span class="o">*</span><span class="n">lpBuffer</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">nNumberOfBytesToWrite</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="kt">uint32_t</span><span class="w"> </span><span class="o">*</span><span class="n">lpNumberOfBytesWritten</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="kt">void</span><span class="w">     </span><span class="o">*</span><span class="n">lpOverlapped</span><span class="w"></span>
+<span class="p">)</span><span class="w"></span>
+<span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="kt">int32_t</span><span class="w"> </span><span class="n">nbytes_written</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"></span>
 
-    <span class="k">asm</span><span class="p">(</span><span class="s">&quot;movl   $4, %eax</span><span class="se">\n</span><span class="s">&quot;</span>         <span class="c1">// system call number = sys_write</span>
-        <span class="s">&quot;movl   8(%ebp), %ebx</span><span class="se">\n</span><span class="s">&quot;</span>    <span class="c1">// hFile</span>
-        <span class="s">&quot;movl   12(%ebp), %ecx</span><span class="se">\n</span><span class="s">&quot;</span>   <span class="c1">// lpBuffer</span>
-        <span class="s">&quot;movl   16(%ebp), %edx</span><span class="se">\n</span><span class="s">&quot;</span>   <span class="c1">// nNumberOfBytesToWrite</span>
-        <span class="s">&quot;int    $0x80</span><span class="se">\n</span><span class="s">&quot;</span>            <span class="c1">// jump to kernel</span>
-        <span class="s">&quot;movl   %eax, -4(%ebp)</span><span class="se">\n</span><span class="s">&quot;</span>   <span class="c1">// store return value in nbytes_written</span>
-    <span class="p">);</span>
-    <span class="k">if</span> <span class="p">(</span><span class="n">nbytes_written</span> <span class="o">==</span> <span class="mi">-1</span><span class="p">)</span> <span class="p">{</span>
-        <span class="o">*</span><span class="n">lpNumberOfBytesWritten</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-        <span class="k">return</span> <span class="nb">false</span><span class="p">;</span>
-    <span class="p">}</span>
-    <span class="k">else</span> <span class="p">{</span>
-        <span class="o">*</span><span class="n">lpNumberOfBytesWritten</span> <span class="o">=</span> <span class="p">(</span><span class="kt">uint32_t</span><span class="p">)</span> <span class="n">nbytes_written</span><span class="p">;</span>
-        <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
-    <span class="p">}</span>
-<span class="p">}</span>
+<span class="w">    </span><span class="k">asm</span><span class="p">(</span><span class="s">&quot;movl   $4, %eax</span><span class="se">\n</span><span class="s">&quot;</span><span class="w">         </span><span class="c1">// system call number = sys_write</span>
+<span class="w">        </span><span class="s">&quot;movl   8(%ebp), %ebx</span><span class="se">\n</span><span class="s">&quot;</span><span class="w">    </span><span class="c1">// hFile</span>
+<span class="w">        </span><span class="s">&quot;movl   12(%ebp), %ecx</span><span class="se">\n</span><span class="s">&quot;</span><span class="w">   </span><span class="c1">// lpBuffer</span>
+<span class="w">        </span><span class="s">&quot;movl   16(%ebp), %edx</span><span class="se">\n</span><span class="s">&quot;</span><span class="w">   </span><span class="c1">// nNumberOfBytesToWrite</span>
+<span class="w">        </span><span class="s">&quot;int    $0x80</span><span class="se">\n</span><span class="s">&quot;</span><span class="w">            </span><span class="c1">// jump to kernel</span>
+<span class="w">        </span><span class="s">&quot;movl   %eax, -4(%ebp)</span><span class="se">\n</span><span class="s">&quot;</span><span class="w">   </span><span class="c1">// store return value in nbytes_written</span>
+<span class="w">    </span><span class="p">);</span><span class="w"></span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">nbytes_written</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">-1</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="o">*</span><span class="n">lpNumberOfBytesWritten</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"></span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="nb">false</span><span class="p">;</span><span class="w"></span>
+<span class="w">    </span><span class="p">}</span><span class="w"></span>
+<span class="w">    </span><span class="k">else</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="o">*</span><span class="n">lpNumberOfBytesWritten</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kt">uint32_t</span><span class="p">)</span><span class="w"> </span><span class="n">nbytes_written</span><span class="p">;</span><span class="w"></span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="nb">true</span><span class="p">;</span><span class="w"></span>
+<span class="w">    </span><span class="p">}</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 </code></pre></div>
 
 <p>Zwei Dinge sind daran bemerkenswert. Erstens wirst du wahrscheinlich (zumindest auf den ersten Blick) den Aufruf der Funktion <code>write</code> vermissen, die ich gerade erwähnt hatte. Diese Funktion wird sehr wohl aufgerufen, aber nicht so, wie man das normalerweise machen würde. Der Aufruf erfolgt nämlich durch den Inline-Assembler-Block. So sieht nämlich ein Systemaufruf für Linux auf einer x86-Architektur (32 Bit) aus, und so ist er auch in der C-Standardbibliothek implementiert. Warum mache ich das so und nutze nicht einfach für meine DLL auch die C-Standardbibliothek? Aus zwei Gründen ist das nicht möglich. Es handelt sich bei meiner DLL ja um eine Bibliothek für <em>Windows</em>, und diese würde nicht gegen die C-Standardbibliothek von Linux (normalerweise die <em>glibc</em>) sondern gegen die von Windows gelinkt werden, also die <code>MSVCRT.DLL</code>. Diese wiederum stellt aber logischerweise keine Stubs für Linux-Systemroutinen zur Verfügung. Ein weiteres Problem wäre, dass die <code>MSVCRT.DLL</code> oder der Startup-Code, der die C-Standardbibliothek initialisiert und der ebenfalls zu dem Programm gelinkt werden würde, weitere Systemroutinen aus der echten <code>KERNEL32.DLL</code> verwenden.</p>
@@ -108,37 +108,37 @@
 <h2>Ausführen des Programms</h2>
 <p>Man sollte meinen, das Ausführen des Programms, nachdem es wie oben beschrieben in den Speicher geladen wurde, wäre trivial - einfach zu der Startadresse des Code-Segments springen. Allerdings gibt es da bei WoL eine Schwierigkeit. WoL ist ja ein 64-Bit-Programm, die Testprogramme, die ich ausführen wollte, sind 32-Bit-Programme. Nun ist es aber so, dass das Ausführen von 32-Bit-Code in einem 64-Bit-Prozess standardmässig nicht funktioniert (weder auf Linux noch auf Windows). Das liegt daran, dass sich anhand der Codierung der Instruktionen nicht eindeutig sagen lässt, ob es sich bei den Instruktionen um 32-bittigen oder 64-bittigen Code handelt. Das muss man dem Prozessor explizit mitteilen. Das geschieht über den <a href="https://en.wikipedia.org/wiki/Segment_descriptor">Segment-Deskriptor</a> für das Code-Segment (also der Deskriptor, der über den Selektor im Register CS referenziert wird). Wenn in diesem Deskriptor das L-Bit gesetzt ist, wird der sogenannte <a href="https://en.wikipedia.org/wiki/X86-64#Operating_modes">Long Mode</a> aktiviert und der Code wird vom Prozessor als 64-Bit-Code interpretiert. Genau so einen Deskriptor mit gesetztem L-Bit verwenden natürlich 64-Bit-Programme (mit dem Selektor 0x33). Allerdings fand ich nach einiger Recherche heraus, dass es sowohl bei Linux als auch bei Windows noch einen zweiten Deskriptor gibt, der das L-Bit nicht gesetzt hat (mit dem Selektor 0x23). Beide Betriebssysteme bieten also eine (wenn auch undokumentierte) Möglichkeit innerhalb eines Prozesses zwischen 32- und 64-Bit-Code hin und her zu wechseln. Dazu muss man "nur" den Code mit einen sogenannten <em>Far Call</em> (also eine CALL-Instruktion, die neben der Zieladresse auch einen Segmentselektor verwendet) mit dem entsprechenden Selektor aufrufen und am Ende mit einem <em>Far Return</em>, wieder mit dem entsprechenden Selektor, zurückspringen.</p>
 <p>Ganz so einfach ist es dann in der Praxis doch nicht, es gibt noch ein paar weitere Dinge zu beachten (siehe auch <a href="https://stackoverflow.com/a/32384358">hier</a> und <a href="https://stackoverflow.com/a/41922752">hier</a>). Im Detail sieht die ganze <a href="https://github.com/wiemerc/WoL/blob/0916f43a3f538d9052ccfa71a3f4f3fce0edb801/thunk.s#L2">Prozedur</a> (die man auch als <a href="https://en.wikipedia.org/wiki/Thunk">Thunk</a> oder <a href="https://en.wikipedia.org/wiki/Trampoline_(computing)">Trampolin</a> bezeichnen kann) dann so aus:</p>
-<div class="highlight"><pre><span></span><code><span class="nf">.code64</span>
-<span class="nl">entry_point_thunk:</span>
-<span class="nf">push</span>    <span class="nb">rbp</span>                         <span class="c1">; save other registers</span>
-<span class="nf">push</span>    <span class="nb">rbx</span>
-<span class="nf">push</span>    <span class="nb">r12</span>
-<span class="nf">mov</span>     <span class="nb">r12</span><span class="p">,</span> <span class="nb">rsp</span>                    <span class="c1">; save RSP</span>
-<span class="nf">push</span>    <span class="nv">offset</span> <span class="nv">l_entry</span>              <span class="c1">; push address of 32-bit code as qword</span>
-<span class="nf">mov</span>     <span class="kt">dword</span> <span class="nv">ptr</span> <span class="p">[</span><span class="nb">rsp</span> <span class="o">+</span> <span class="mi">4</span><span class="p">],</span> <span class="mh">0x23</span>   <span class="c1">; overwrite the high dword with the segment selector</span>
-<span class="nf">retf</span>                                <span class="c1">; &quot;return&quot; to 32-bit code</span>
+<div class="highlight"><pre><span></span><code><span class="nf">.code64</span><span class="w"></span>
+<span class="nl">entry_point_thunk:</span><span class="w"></span>
+<span class="nf">push</span><span class="w">    </span><span class="nb">rbp</span><span class="w">                         </span><span class="c1">; save other registers</span><span class="w"></span>
+<span class="nf">push</span><span class="w">    </span><span class="nb">rbx</span><span class="w"></span>
+<span class="nf">push</span><span class="w">    </span><span class="nb">r12</span><span class="w"></span>
+<span class="nf">mov</span><span class="w">     </span><span class="nb">r12</span><span class="p">,</span><span class="w"> </span><span class="nb">rsp</span><span class="w">                    </span><span class="c1">; save RSP</span><span class="w"></span>
+<span class="nf">push</span><span class="w">    </span><span class="nv">offset</span><span class="w"> </span><span class="nv">l_entry</span><span class="w">              </span><span class="c1">; push address of 32-bit code as qword</span><span class="w"></span>
+<span class="nf">mov</span><span class="w">     </span><span class="kt">dword</span><span class="w"> </span><span class="nv">ptr</span><span class="w"> </span><span class="p">[</span><span class="nb">rsp</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">4</span><span class="p">],</span><span class="w"> </span><span class="mh">0x23</span><span class="w">   </span><span class="c1">; overwrite the high dword with the segment selector</span><span class="w"></span>
+<span class="nf">retf</span><span class="w">                                </span><span class="c1">; &quot;return&quot; to 32-bit code</span><span class="w"></span>
 
-<span class="nl">l_entry:</span>
-<span class="nf">.code32</span>
-<span class="nf">mov</span>     <span class="nb">esp</span><span class="p">,</span> <span class="nb">esi</span>                    <span class="c1">; load new stack address (2nd argument - stack_ptr)</span>
-<span class="nf">push</span>    <span class="nb">ss</span>                          <span class="c1">; set DS and ES to the value of SS</span>
-<span class="nf">pop</span>     <span class="nb">ds</span>
-<span class="nf">push</span>    <span class="nb">ss</span>
-<span class="nf">pop</span>     <span class="nb">es</span>
-<span class="nf">call</span>    <span class="nb">edi</span>                         <span class="c1">; call entry point of Windows program passed as 1st argument (entry_point)</span>
-<span class="nf">push</span>    <span class="mh">0x0</span>                         <span class="c1">; set DS back to 0</span>
-<span class="nf">pop</span>     <span class="nb">ds</span>
-<span class="nf">push</span>    <span class="mh">0x33</span>                        <span class="c1">; push segment selector and address of 64-bit code</span>
-<span class="nf">push</span>    <span class="nv">offset</span> <span class="nv">l_return</span>
-<span class="nf">retf</span>                                <span class="c1">; &quot;return&quot; to 64-bit code</span>
+<span class="nl">l_entry:</span><span class="w"></span>
+<span class="nf">.code32</span><span class="w"></span>
+<span class="nf">mov</span><span class="w">     </span><span class="nb">esp</span><span class="p">,</span><span class="w"> </span><span class="nb">esi</span><span class="w">                    </span><span class="c1">; load new stack address (2nd argument - stack_ptr)</span><span class="w"></span>
+<span class="nf">push</span><span class="w">    </span><span class="nb">ss</span><span class="w">                          </span><span class="c1">; set DS and ES to the value of SS</span><span class="w"></span>
+<span class="nf">pop</span><span class="w">     </span><span class="nb">ds</span><span class="w"></span>
+<span class="nf">push</span><span class="w">    </span><span class="nb">ss</span><span class="w"></span>
+<span class="nf">pop</span><span class="w">     </span><span class="nb">es</span><span class="w"></span>
+<span class="nf">call</span><span class="w">    </span><span class="nb">edi</span><span class="w">                         </span><span class="c1">; call entry point of Windows program passed as 1st argument (entry_point)</span><span class="w"></span>
+<span class="nf">push</span><span class="w">    </span><span class="mh">0x0</span><span class="w">                         </span><span class="c1">; set DS back to 0</span><span class="w"></span>
+<span class="nf">pop</span><span class="w">     </span><span class="nb">ds</span><span class="w"></span>
+<span class="nf">push</span><span class="w">    </span><span class="mh">0x33</span><span class="w">                        </span><span class="c1">; push segment selector and address of 64-bit code</span><span class="w"></span>
+<span class="nf">push</span><span class="w">    </span><span class="nv">offset</span><span class="w"> </span><span class="nv">l_return</span><span class="w"></span>
+<span class="nf">retf</span><span class="w">                                </span><span class="c1">; &quot;return&quot; to 64-bit code</span><span class="w"></span>
 
-<span class="nl">l_return:</span>
-<span class="nf">.code64</span>
-<span class="nf">mov</span>     <span class="nb">rsp</span><span class="p">,</span> <span class="nb">r12</span>                    <span class="c1">; restore RSP</span>
-<span class="nf">pop</span>     <span class="nb">r12</span>                         <span class="c1">; restore other registers</span>
-<span class="nf">pop</span>     <span class="nb">rbx</span>
-<span class="nf">pop</span>     <span class="nb">rbp</span>
-<span class="nf">ret</span>                                 <span class="c1">; return to main()</span>
+<span class="nl">l_return:</span><span class="w"></span>
+<span class="nf">.code64</span><span class="w"></span>
+<span class="nf">mov</span><span class="w">     </span><span class="nb">rsp</span><span class="p">,</span><span class="w"> </span><span class="nb">r12</span><span class="w">                    </span><span class="c1">; restore RSP</span><span class="w"></span>
+<span class="nf">pop</span><span class="w">     </span><span class="nb">r12</span><span class="w">                         </span><span class="c1">; restore other registers</span><span class="w"></span>
+<span class="nf">pop</span><span class="w">     </span><span class="nb">rbx</span><span class="w"></span>
+<span class="nf">pop</span><span class="w">     </span><span class="nb">rbp</span><span class="w"></span>
+<span class="nf">ret</span><span class="w">                                 </span><span class="c1">; return to main()</span><span class="w"></span>
 </code></pre></div>
 
 <p>Vom Hauptprogramm aufgerufen wird diese Routine mit <code>entry_point_thunk(&lt;real entry point&gt;, &lt;new stack pointer&gt;)</code>. Auf den ersten Blick wirst du wahrscheinlich in dem Code den erwähnten Far Call vermissen. Stattdessen verwende ich sowohl für den Aufruf des 32-Bit-Codes als auch für die Rückkehr zum 64-Bit-Code einen Far Return (die Instruktion RETF). Das mache ich weil von einem Far Call ja die Rücksprungadresse und der Segmentselektor auf dem Stack abgelegt werden, die ich dann erstmal wieder vom Stack entfernen müsste. Mit einem Far Return spare ich mir das, abgeschaut habe ich mir diesen Trick <a href="http://blog.rewolf.pl/blog/?p=102">hier</a>.</p>

@@ -12,440 +12,146 @@
 
 <body id="index" class="home">
         <header id="banner" class="body">
-                <h1><a href="https://wiemerc.github.io/">Constantin Wiemer's Blog  <strong><p>Ein Blog über coole Hacks (im ursprünglichen Sinn) und Computergeschichte</strong></a></h1>
+                <h1><a href="https://wiemerc.github.io/">Constantin Wiemer's Blog  <strong><p>Ein Blog über meine Programmierprojekte und vielleicht auch mal über Computergeschichte</strong></a></h1>
                 <nav><ul>
     
                         <li><a href="https://wiemerc.github.io/pages/uber-mich.html">Über mich</a></li>
                     <li><a href="https://wiemerc.github.io/category/computergeschichte.html">Computergeschichte</a></li>
-                    <li><a href="https://wiemerc.github.io/category/hacks.html">Hacks</a></li>
+                    <li><a href="https://wiemerc.github.io/category/projekte.html">Projekte</a></li>
                 </ul>
                 </nav>
         </header><!-- /#banner -->
 
             <aside id="featured" class="body">
                 <article>
-                    <h1 class="entry-title"><a href="https://wiemerc.github.io/alte-freundin-virtuelle-maschine-fur-amiga-programme.html">Alte Freundin - Virtuelle Maschine für Amiga-Programme</a></h1>
+                    <h1 class="entry-title"><a href="https://wiemerc.github.io/wurmloch-remote-debugger-fur-den-commodore-amiga.html">Wurmloch - Remote Debugger für den Commodore Amiga</a></h1>
 <footer class="post-info">
-        <span>Sun 08 November 2020</span>
+        <span>Fri 06 January 2023</span>
 
-</footer><!-- /.post-info --><p>Irgendwann im Frühjahr 2016 hatte ich die Idee zu einem Projekt, das mir im ersten Moment ziemlich verrückt erschien. Ich könnte doch einen Emulator schreiben, der Programme, die für den Commodore Amiga, den Computer meiner Jugend, entwickelt worden waren, auf einem Mac oder einem Linux-Rechner ausführt. Und dieser Emulator sollte die Programme wenn möglich in ihrer binären Form, also ohne erneute Übersetzen ausführen.</p>
-<p>Dass so etwas grundsätzlich möglich ist war mir klar. Es gibt ja einige Beispiele solcher Emulatoren, zum Beispiel das <a href="https://en.wikipedia.org/wiki/Wine_(software)">Wine-Projekt</a>, <a href="https://en.wikipedia.org/wiki/Wabi_(software)">Wabi</a> von Sun Microsystems, eine Software, die Windows-3.x-Programme auf Sun's Betriebssystem Solaris ausführen konnte, oder auch die <a href="https://en.wikipedia.org/wiki/Virtual_DOS_machine">Virtual DOS Machine</a> in älteren Windows-Versionen. Bei dem Namen für das Projekt, <em>Virtual AmigaDOS Machine</em> oder VADM habe ich mich dann auch von letzterer inspirieren lassen.</p>
-<p>Eine zusätzliche Schwierigkeit bei Amiga-Programmen ist allerdings, dass der Amiga ja Prozessoren der 68000er-Familie von Motorola verwendete. Wenn mein Emulator also binärkompatibel (und nicht nur quellkompatibel) sein sollte müsste ich auch den Prozessor emulieren. Auch dafür, dass so etwas möglich ist, gibt es Beispiele. Zum Beispiel war in der Version von Windows NT für den Alpha-Prozessor von DEC ein Emulator enthalten, der Programme ausführen konnte, die für Intel-Prozessoren geschrieben worden waren. So einen Prozessor-Emulator selber zu schreiben erschien mir aber als eine zu grosse Aufgabe, um sie als Hobbyprojekt anzugehen, und ein kurzer Blick in das Datenblatt der Motorola-Prozessoren bestätigte meine Meinung. Diese Prozessoren waren für ihre Zeit eben doch schon ziemlich komplex. Nach kurzer Recherche stellte ich allerdings fest, dass es bereits einen Emulator für diese Prozessoren gibt, der einen ganz brauchbaren Eindruck machte, nämlich <a href="https://github.com/kstenerud/Musashi">Musashi</a>. Dieser Emulator wird auch von dem <a href="https://www.mamedev.org/">MAME-Projekt</a> verwendet.</p>
-<p>Mit Hilfe von Musashi schaffte ich es dann tatsächlich, so einen Emulator schreiben. Der Code dazu findet sich <a href="https://github.com/wiemerc/VADM">hier</a>. Obwohl er funktionierte (und sogar relativ mächtig war, er konnte einen Klon des von Unix und Linux bekannten <em>find</em>-Kommandos ausführen) war ich doch nicht ganz damit zufrieden weil er ja nicht vollständig meine eigene Leistung war. Einige Zeit später hörte ich dann zum ersten Mal von <a href="https://en.wikipedia.org/wiki/Dynamic_recompilation">Dynamic Recompilation</a>, auch <a href="https://en.wikipedia.org/wiki/Binary_translation">Binary Translation</a> genannt. Vielleicht könnte ich ja diese Technik nutzen, um Musashi überflüssig zu machen? Dazu sollte ich erstmal kurz erklären, wie diese Technik funktioniert. Allgemein geht es darum, den binären Code eines Programms zur Laufzeit in Maschinencode für einen Prozessor zu übersetzen. Bei dem ursprünglichen Code kann es sich dabei um <a href="https://en.wikipedia.org/wiki/Bytecode">Bytecode</a> handeln oder, wie im Fall von VADM, um Maschinencode für eine andere Prozessorarchitektur. Diese Technik wird also sowohl von virtuellen Maschinen für Sprachen, die in Bytecode übersetzt werden (wie zum Beispiel Java oder C#), verwendet als auch von Emulatoren, wobei ein Emulator ja auch eine virtuelle Maschine darstellt.</p>
-<p>Übersetzen zur Laufzeit bedeutet, dass das Übersetzen und Ausführen des Codes nicht in getrennten Schritten oder Programmen passiert. Vielmehr führt ein Programm, nämlich die virtuelle Maschine oder der Emulator beide Schritte durch, und das auch nicht nacheinander sondern abwechselnd. Das bedeutet, das zu übersetzende Programm wird in kleine "Häppchen" aufgeteilt (was das bei VADM bedeutet werden wir später sehen) und jeweils ein solches Häppchen wird zuerst übersetzt und dann sofort ausgeführt. Es handelt sich hierbei also um einen <a href="https://en.wikipedia.org/wiki/Just-in-time_compilation">Just-in-time Compiler</a>.</p>
-<p>Als Ziel setzte ich mir schlisslich, ein einfaches, in Assembler geschriebenes Programm, das für einen Amiga mit einem Motorola-680x0-Prozessor (im folgenden Motorola-Prozessor genannt) und AmigaOS geschrieben wurde, auf einem Rechner mit Intel-x86-64-Prozessor (im folgenden Intel-Prozessor genannt) und macOS oder Linux zum Laufen zu bringen. Das ist der Quellcode dieses Programms <em>loop</em>, das dreimal den Text "Only Amiga made it possible" ausgibt. Es besteht aus 10 unterschiedlichen Instruktionen und 3 Systemroutinen.</p>
-<div class="highlight"><pre><span></span><code>/*
-* some constants
-*/
-.set AbsExecBase, 4
-.set OpenLibrary, -552 
-.set CloseLibrary, -414
-.set PutStr, -948
-
-.text
-    /* open DOS library */
-    movea.l     AbsExecBase, a6
-    movea.l     #libname, a1
-    moveq.l     #0, d0
-    jsr         OpenLibrary(a6)
-    tst.l       d0
-    beq.w       error_no_dos
-    move.l      d0, DOSBase
-
-    /* print text 3 times */
-    movea.l     DOSBase, a6
-    moveq.l     #3, d2                  /* loop counter */
-loop_start:
-    move.l      #msg, d1                /* text address, we can&#39;t use lea because it only works with address registers */
-    jsr         PutStr(a6)
-    subq.l      #1, d2
-    bne.s       loop_start
-
-normal_exit:
-    /* close DOS library */
-    movea.l     AbsExecBase, a6
-    movea.l     DOSBase, a1
-    jsr         CloseLibrary(a6)
-    moveq.l     #0, d0                  /* exit code */
-    rts
-
-error_no_dos:
-    moveq.l     #1, d0                  /* exit code */
-    rts
-
-.data
-    .comm DOSBase, 4
-
-    libname:    .asciz &quot;dos.library&quot;
-    msg:        .asciz &quot;Only Amiga made it possible\n&quot;
-</code></pre></div>
-
-<p>Wie ich dieses Ziel erreicht habe beschreibt der Rest des Artikels. Beim Schreiben so eines Emulators gibt es im wesentlichen drei Aufgaben, auf die ich im folgenden näher eingehen werde. Dabei handelt es sich um das Laden des Programms, das Übersetzen des Codes und die Emulation der API (der Systemroutinen).</p>
-<h1>Laden des Programms</h1>
-<p>Hier bestand die Herausforderung darin, dass das AmigaOS und Linux unterschiedliche Dateiformate für Programme nutzen. Linux verwendet das Format ELF, das AmigaOS verwendete das sogenannte <a href="https://en.wikipedia.org/wiki/Amiga_Hunk">Hunk-Format</a>. Der Loader von Linux, also die Komponente im Betriebssystem, die für das Laden von Programmen zuständig ist, kann daher Amiga-Programme gar nicht laden. So einen Loader musste ich also selber implementieren.</p>
-<p>Eine genaue Beschreibung des Hunk-Formats findet sich im <em>AmigaDOS Manual</em> (<sup id="fnref:amigados-manual"><a class="footnote-ref" href="#fn:amigados-manual">2</a></sup>) oder auch im <em>Amiga-Guru-Buch</em> (<sup id="fnref:amiga-guru-book"><a class="footnote-ref" href="#fn:amiga-guru-book">1</a></sup>). Grob gesagt besteht eine Programmdatei in diesem Format aus mehreren Hunks, die den Segmenten bei anderen Formaten wie ELF oder PE entsprechen. Normalerweise besteht eine Programmdatei aus drei Hunks, je einem für Code, Daten und BSS. Optional gibt es noch einen Hunk mit den Debugging-Informationen. Diese Hunks sind dann nochmal in mehrere Blöcke unterteilt, und zwar in einen Block mit dem Code beziehungsweise den Daten (in dem BSS-Hunk ist dieser natürlich leer), einen Block mit <a href="https://en.wikipedia.org/wiki/Relocation_(computing)">Verschiebeinformationen</a> und einen Block mit den Symbolen für diesen Hunk (wenn sie nicht vom Linker aus der Programmdatei gelöscht wurden). Verschiebeinformationen sind deshalb notwendig weil das AmigaOS keinen virtuellen Speicher verwendete und deshalb beim Linken eines Programms die absolute Adresse, an der das Programm geladen wird, nicht bekannt war. Das hat zur Folge, dass der Loader alle absoluten Adressen in dem Programm beim Laden anhand der Verschiebeinformationen anpassen muss.</p>
-<p>Das Lesen der Programmdatei und das Laden des Codes und der Daten in den Speicher ist in der Routine <code>load_program</code> in der Datei <code>loader.c</code> implementiert und ebenso das Anpassen der Adressen. Dabei gibt es ein interessantes Detail. Auf dem Amiga waren alle Adressen 32 Bits breit und demzufolge natürlich auch die anzupassenden Adressen. Wie sollte ich also die 64 Bits der Adressen, an die die Hunks geladen werden, in den zur Verfügung stehenden 32 Bits unterbringen? Dieses Problem habe ich so gelöst, dass die Hunks mit <code>mmap</code> an feste Adressen unterhalb der 4GB-Grenze geladen werden und so 32-Bit-Adressen entstehen (die oberen 32 Bit sind eben alle 0).</p>
-<h1>Übersetzen des Codes</h1>
-<p>Nach dem Laden des Amiga-Programms muss der Programmcode übersetzt werden. Das bedeutet, dass für jede der Instruktionen für den Motorola-Prozessor eine (oder auch mehrere) entsprechende Instruktion(en) für den Intel-Prozessor erzeugt werden muss (müssen). Dabei bin ich in zwei Schritten vorgegangen. Im ersten Schritt wird die Original-Instruktion decodiert und in ihre Bestandteile, nämlich <a href="https://en.wikipedia.org/wiki/Opcode">Opcode</a>, <a href="https://en.wikipedia.org/wiki/Addressing_mode">Adressierungsart</a> und die Operanden, zerlegt. Das ist im Prinzip auch das, was ein Prozessor tun muss bevor er eine Instruktion ausführen kann. Im zweiten Schritt wird aus diesen Bestandteilen eine neue Instruktion für den Intel-Prozessor erzeugt und entsprechend codiert. Den ersten Schritt habe ich nicht vollständig selber implementiert sondern ich habe dafür Teile des Dissassemblers von Musashi verwendet. Ein Dissassembler muss nämlich die Instruktionen genauso decodieren und zerlegen, nur dass er dann die Bestandteile in lesbarer Form ausgibt. Der Dissassembler von Musashi ist so geschrieben, dass er aus dem Code eine Folge von Instruktionen erzeugt und dann für jede Instruktion mit Hilfe einer Lookup-Tabelle und dem Opcode als Index einen sogeannten Handler aufruft (wer an den Details interessiert ist kann sich die Routine <code>translate_tu</code> in der Datei <code>translate.c</code> zu Gemüte führen). Der nachfolgende Code zeigt beispielhaft einen Teil des Handlers für die Instruktion <em>MOVE</em>.</p>
-<p>Als erstes werden die beiden Operanden aus der codierten Instruktion extrahiert. In den 16 Bits des Opcodes ist der Typ der Operanden, die sogenannte effektive Adresse, angegeben, die Operanden selber sind im Speicher nach dem Opcode abgelegt. Ein Operand kann ein Register, eine Speicheradresse oder ein konstanter Wert (nur beim Quelloperanden) sein. Nachdem sowohl der Typ als auch die Operanden bei allen Instruktionen auf die gleiche Weise codiert sind habe ich dafür eine Funktion <code>extract_operand</code> geschrieben. Eine genaue Beschreibung aller Instruktionen und der Codierung derselben findet sich im <em>Motorola M68000 Family Programmer’s Reference Manual</em> (<sup id="fnref:motorola-manual"><a class="footnote-ref" href="#fn:motorola-manual">4</a></sup>).</p>
-<div class="highlight"><pre><span></span><code><span class="kt">uint8_t</span>  <span class="n">src_mode_reg</span> <span class="o">=</span> <span class="n">m68k_opcode</span> <span class="o">&amp;</span> <span class="mh">0x003f</span><span class="p">;</span>
-<span class="kt">uint8_t</span>  <span class="n">dst_mode_reg</span> <span class="o">=</span> <span class="p">(</span><span class="n">m68k_opcode</span> <span class="o">&amp;</span> <span class="mh">0x0fc0</span><span class="p">)</span> <span class="o">&gt;&gt;</span> <span class="mi">6</span><span class="p">;</span>
-<span class="n">Operand</span>  <span class="n">srcop</span><span class="p">,</span> <span class="n">dstop</span><span class="p">;</span>
-<span class="kt">int</span>      <span class="n">nbytes_used</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-
-<span class="n">nbytes_used</span> <span class="o">+=</span> <span class="n">extract_operand</span><span class="p">(</span><span class="n">src_mode_reg</span><span class="p">,</span> <span class="n">inpos</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">srcop</span><span class="p">);</span>
-<span class="c1">// destination operand has mode and register parts swapped</span>
-<span class="n">dst_mode_reg</span> <span class="o">=</span> <span class="p">((</span><span class="n">dst_mode_reg</span> <span class="o">&amp;</span> <span class="mh">0x07</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="mi">3</span><span class="p">)</span> <span class="o">|</span> <span class="p">((</span><span class="n">dst_mode_reg</span> <span class="o">&amp;</span> <span class="mh">0x38</span><span class="p">)</span> <span class="o">&gt;&gt;</span> <span class="mi">3</span><span class="p">);</span>
-<span class="n">nbytes_used</span> <span class="o">+=</span> <span class="n">extract_operand</span><span class="p">(</span><span class="n">dst_mode_reg</span><span class="p">,</span> <span class="n">inpos</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">dstop</span><span class="p">);</span>
-</code></pre></div>
-
-<p>Anschliessend wird mit diesen Operanden eine entsprechende Instruktion für den Intel-Prozessor (<em>MOV</em>) erzeugt. Dazu habe ich für die verschiedenen Kombinationen der Typen von Quell- und Zieloperand jeweils eine eigene Funktion geschrieben. Ähnlich wie bei den Motorola-Prozessoren besteht nicht überraschend auch bei den Intel-Prozessoren eine Instruktion aus einem Opcode (möglicherweise mit einem Prefix), dem Typ der Operanden (der durch die sogenannten ModR/M- und SIB-Bytes festgelegt wird) und den Operanden selber. Wer sich für die (relativ komplizierten) Details interessiert, dem sei das <em>Intel 64 and IA-32 Architectures Software Developer’s Manual</em> (<sup id="fnref:intel-manual"><a class="footnote-ref" href="#fn:intel-manual">5</a></sup>) (stolze 2200 Seiten) und eine hilfreiche Webseite des Bristol Community College (<sup id="fnref:encoding-instructions"><a class="footnote-ref" href="#fn:encoding-instructions">6</a></sup>) empfohlen.</p>
-<div class="highlight"><pre><span></span><code><span class="c1">// call the appropriate function depending on the combination of source / destination operand type</span>
-<span class="k">if</span> <span class="p">((</span><span class="n">srcop</span><span class="p">.</span><span class="n">op_type</span>      <span class="o">==</span> <span class="n">OP_MEM</span><span class="p">)</span>  <span class="o">&amp;&amp;</span> <span class="p">(</span><span class="n">dstop</span><span class="p">.</span><span class="n">op_type</span> <span class="o">==</span> <span class="n">OP_DREG</span><span class="p">))</span>
-    <span class="n">x86_encode_move_mem_to_dreg</span><span class="p">(</span><span class="n">srcop</span><span class="p">.</span><span class="n">op_value</span><span class="p">,</span> <span class="n">dstop</span><span class="p">.</span><span class="n">op_value</span><span class="p">,</span> <span class="n">outpos</span><span class="p">);</span>
-<span class="k">else</span> <span class="nf">if</span> <span class="p">((</span><span class="n">srcop</span><span class="p">.</span><span class="n">op_type</span> <span class="o">==</span> <span class="n">OP_IMM</span><span class="p">)</span>  <span class="o">&amp;&amp;</span> <span class="p">(</span><span class="n">dstop</span><span class="p">.</span><span class="n">op_type</span> <span class="o">==</span> <span class="n">OP_DREG</span><span class="p">))</span>
-    <span class="n">x86_encode_move_imm_to_dreg</span><span class="p">(</span><span class="n">srcop</span><span class="p">.</span><span class="n">op_value</span><span class="p">,</span> <span class="n">dstop</span><span class="p">.</span><span class="n">op_value</span><span class="p">,</span> <span class="n">outpos</span><span class="p">);</span>
-<span class="k">else</span> <span class="nf">if</span> <span class="p">((</span><span class="n">srcop</span><span class="p">.</span><span class="n">op_type</span> <span class="o">==</span> <span class="n">OP_DREG</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="p">(</span><span class="n">dstop</span><span class="p">.</span><span class="n">op_type</span> <span class="o">==</span> <span class="n">OP_MEM</span><span class="p">))</span>
-    <span class="n">x86_encode_move_dreg_to_mem</span><span class="p">(</span><span class="n">srcop</span><span class="p">.</span><span class="n">op_value</span><span class="p">,</span> <span class="n">dstop</span><span class="p">.</span><span class="n">op_value</span><span class="p">,</span> <span class="n">outpos</span><span class="p">);</span>
-<span class="k">else</span> <span class="nf">if</span> <span class="p">((</span><span class="n">srcop</span><span class="p">.</span><span class="n">op_type</span> <span class="o">==</span> <span class="n">OP_DREG</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="p">(</span><span class="n">dstop</span><span class="p">.</span><span class="n">op_type</span> <span class="o">==</span> <span class="n">OP_DREG</span><span class="p">))</span>
-    <span class="n">x86_encode_move_dreg_to_dreg</span><span class="p">(</span><span class="n">srcop</span><span class="p">.</span><span class="n">op_value</span><span class="p">,</span> <span class="n">dstop</span><span class="p">.</span><span class="n">op_value</span><span class="p">,</span> <span class="n">outpos</span><span class="p">);</span>
-<span class="k">else</span> <span class="p">{</span>
-    <span class="n">ERROR</span><span class="p">(</span><span class="s">&quot;combination of source / destination operand types %d / %d not supported&quot;</span><span class="p">,</span> <span class="n">srcop</span><span class="p">.</span><span class="n">op_type</span><span class="p">,</span> <span class="n">dstop</span><span class="p">.</span><span class="n">op_type</span><span class="p">);</span>
-    <span class="k">return</span> <span class="mi">-1</span><span class="p">;</span>
-    <span class="p">}</span>
-</code></pre></div>
-
-<p>Schwieriger wird die Sache bei den Sprungbefehlen (<em>BCC</em>). Bei diesen Befehlen ist der Operand die Adresse im Code (absolut oder relativ), an die verzweigt werden soll (oder auch ein Offset, der zu einem Adressregister addiert wird, was dann wiederum eine Adresse ergibt). Diese Adresse, also das Sprungziel, ist aber für den übersetzten Code beim Übersetzen der Sprungbefehle noch gar nicht bekannt und <em>nicht</em> gleich der Adresse im Originalcode. Sowohl absolute als auch relative Adressen und Offsets ändern sich nämlich beim Übersetzen. Das liegt zum einen daran, dass der übersetzte Code natürlich im Speicher an einer anderen Stelle zu liegen kommt als der Originalcode. Zum anderen sind im Allgemeinen funktional identische Instruktionen bei Motorola- und Intel-Prozessoren unterschiedlich lang, bestehen also aus einer unterschiedlichen Anzahl von Bytes.</p>
-<p>Dieses Problem habe ich so gelöst, dass ich nicht das komplette Programm "in einem Rutsch" übersetze. Stattdessen unterteile ich das Programm in Blöcke, sogenannte <em>Translation Units</em> (TU), und übersetze diese einzeln. Die übersetzten Blöcke werden in einem <em>Translation Cache</em> abgelegt. Diese Methode stammt nicht von mir sondern aus einem Paper (<sup id="fnref:vmware-paper"><a class="footnote-ref" href="#fn:vmware-paper">3</a></sup>), das beschreibt, wie in VMware Binary Translation durchgeführt wird. Weil ich den Code ja zur Laufzeit des Amiga-Programms übersetzen wollte, und auch nur Code, der tatsächlich ausgeführt wird, habe ich die Methode noch etwas erweitert. Bei VADM bestehen die einzelnen Translation Units erstmal nur aus einem Stub, der sich selbst bei der ersten Verwendung der Translation Unit durch den übersetzten Code ersetzt und diesen Code dann auch gleich ausführt. Das ist ein ähnliches Prinzip wie bei einem Programm mit <a href="https://en.wikipedia.org/wiki/Overlay_(programming)">Overlays</a>. Wie das alles im Detail funktioniert ist nachfolgend anhand des Diagramms beschrieben.</p>
-<p><img alt="Ausführen des Programms" src="https://wiemerc.github.io/images/VADM/program-flow.svg"></p>
-<ol>
-<li>Die Routine <code>setup_tu</code> wird mit der Adresse (im Originalcode) der ersten anzulegenden TU aufgerufen. Die erste TU befindet sich natürlich am Anfang des Programms.</li>
-<li><code>setup_tu</code> überprüft, ob die TU bereits angelegt wurde und sich im Translation Cache befindet. Dieser Cache speichert die Zuordnung von Adressen im Originalcode zu Adressen im übersetzten Code für alle bereits angelegten TUs (implementiert als binärer Suchbaum). Befindet sich die TU im Cache gibt es nichts zu tun und <code>setup_tu</code> gibt einfach aus dem Cache die Adresse des Speicherblocks für den übersetzten Codes zurück.</li>
-<li>Befindet sich die TU noch nicht im Cache muss diese angelegt werden. Dazu wird zuerst ein Speicherblock allokiert, in dem dann zuerst der Stub und später der übersetzte Code abgelegt werden. Diese Blöcke sind der Einfachheit halber immer 4 KB (eine volle Speicherseite) gross und der Speicher muss logischerweise ausführbar sein. Die Adresse des Speicherblocks wird zusammen mit der Adresse im Originalcode im Translation Cache gespeichert.</li>
-<li>In dem allokierten Speicherblock wird der Code für den schon erwähnte Stub erzeugt. Dieser Stub sichert den Zustand des Amiga-Programms (die Register und Prozessor-Flags), ruft die Routine <code>translate_tu</code> auf, stellt den Zustand des Amiga-Programms wieder her und springt zu dem übersetzten Code.</li>
-<li>Die soeben angelegte TU, genauer gesagt der darin enthaltene Stub wird ausgeführt. Bei der erste TU des Programms passiert das durch die Routine <code>exec_program</code> in <code>execute.c</code>. Alle anderen TUs werden von der jeweils vorhergehenden TU aufgerufen. Als Folge davon wird <code>translate_tu</code> aufgerufen.</li>
-<li>Wie schon oben beschrieben wird dann die TU übersetzt, und zwar solange bis eine terminierende Instruktion erreicht ist, also eine Instruktion, die die TU abschliesst. Nachdem ich ja nur einen kleinen Teil des Befehlssatzes der Motorola-Prozessoren implementiert habe sind das bei VADM die Instruktionen <em>BCC</em> (Sprünge) und <em>RTS</em> (Rücksprung aus einer Routine). Der übersetzte Code wird im Speicherblock hinter dem Stub abgelegt.</li>
-<li>Handelt es sich bei der terminierenden Instruktion um einen Sprungbefehl passiert folgendes.<ul>
-<li>Es werden durch den Aufruf von <code>setup_tu</code> zwei weitere TUs angelegt, einmal mit dem Sprungziel als Adresse, einmal mit der Adresse der Instruktion nach dem Sprungbefehl.</li>
-<li>Der Sprungbefehl wird mit der Adresse (des übersetzten Codes) der ersten TU als Sprungziel übersetzt. Zusätzlich wird nach dem Sprungbefehl ein unbedingter Sprung (JMP) eingefügt, mit dem zur zweiten TU gesprungen wird. Das bedeutet, dass die aktuelle TU mit diesen beiden neuen TUs verknüpft und die Programmausführung mit einer dieser beiden TUs fortgesetzt wird (mit der ersten wenn die Sprungbedingung erfüllt ist, ansonsten mit der zweiten).</li>
-</ul>
-</li>
-<li><code>translate_tu</code> fügt am Anfang des Speicherblocks einen Sprung zum übersetzten Code ein und beendet sich. Dann wird der restliche Teil des Stubs ausgeführt, das heisst, der Zustand des Amiga-Programms wird wiederhergestellt und die TU, also der soeben übersetzte Code wird ausgeführt. Der eingefügte Sprung ist notwendig damit beim eventuellen erneuten Ausführen dieser TU der Stub und damit ein erneuter Aufruf von <code>translate_tu</code> umgangen wird.</li>
-<li>Ist das Ende der aktuelle TU erreicht wird zu einer der beiden nachfolgenden TUs gesprungen (wenn das Amiga-Programm noch nicht zu Ende ist). Damit werden wieder die Schritte 5 bis 9 durchlaufen.</li>
-</ol>
-<p>Die Translation Units stellen in den meisten Fällen sogenannte <a href="https://en.wikipedia.org/wiki/Basic_block">Basic Blocks</a> dar. Allerdings kann es bei der beschriebenen Methode vorkommen, dass Basic Blocks entstehen, die nicht nur die erste Instruktion als "Eingang" haben sondern auch noch andere Instruktionen, so zum Beispiel bei der dritten TU, was der strikten Definition widerspricht (die vierte TU ist ein Teil der dritten TU). Das folgende Diagramm zeigt die TUs von <em>loop</em>.</p>
-<p><img alt="Ausführen des Programms" src="https://wiemerc.github.io/images/VADM/tu-flow.svg"></p>
-<p>Abschliessend möchte ich noch erwähnen, wie ich die Register des Motorola-Prozessors auf die des Intel-Prozessors abgebildet habe. Die Motorola-Prozessoren hatten ja von Anfang an schon 16 32 Bit breite Register, 8 Adress- und 8 Datenregister. Um überhaupt genügend Register zur Verfügung zu haben wird der 32-bittige Code des Amiga-Programms in 64-bittigen Code übersetzt. Denn nur im 64-Bit-Modus der Intel-Prozessoren kann man die Register R8D - R15D nutzen (das D bedeutet, dass nur die unteren 32 Bit der an sich 64 Bit breiten Register genutzt werden). Auf diese Register habe ich die Datenregister D0 - D7 abgebildet. Als Adressregister verwende ich die restlichen verfügbaren Register entsprechend der folgenden Tabelle (hier bedeutet das E, dass wieder nur die unteren 32 Bits der Register genutzt werden). Die Reihenfolge der Intel-Register entspricht der Nummerierung der Register in den codierten Instruktionen, mit einer Ausnahme: Ich habe EDI mit ESP getauscht, so dass, entsprechend der Verwendung als Stack Pointer, A7 auf ESP abgebildet wird.</p>
-<table>
-<thead>
-<tr>
-<th>Motorola-Register</th>
-<th>Intel-Register</th>
-<th>Verwendung</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>A0</td>
-<td>EAX</td>
-<td></td>
-</tr>
-<tr>
-<td>A1</td>
-<td>ECX</td>
-<td></td>
-</tr>
-<tr>
-<td>A2</td>
-<td>EDX</td>
-<td></td>
-</tr>
-<tr>
-<td>A3</td>
-<td>EBX</td>
-<td></td>
-</tr>
-<tr>
-<td>A4</td>
-<td>EDI</td>
-<td></td>
-</tr>
-<tr>
-<td>A5</td>
-<td>EBP</td>
-<td>Frame Pointer</td>
-</tr>
-<tr>
-<td>A6</td>
-<td>ESI</td>
-<td>Basisadressen der Bibliotheken des Amiga OS</td>
-</tr>
-<tr>
-<td>A7</td>
-<td>ESP</td>
-<td>Stack Pointer</td>
-</tr>
-</tbody>
-</table>
-<h1>Emulation der API</h1>
-<p>Die dritte Aufgabe des Emulators bzw. der virtuellen Maschine ist es, die von dem Beispielprogramm verwendeten Systemroutinen zu emulieren. Dabei handelt es sich um die Routinen <code>OpenLibrary</code>, <code>PutStr</code> und <code>CloseLibrary</code>. Das Problem war hierbei nicht, die eigentliche Funktionalität nachzubauen sondern, die Aufrufe dieser Routinen im Beispielprogramm abzufangen und auf die entsprechenden Routinen in der virtuellen Maschine "umzubiegen". Um diesen Teil verstehen zu können muss man zuerst wissen, wie der Aufruf von Systemroutinen im AmigaOS funktionierte. Im AmigaOS waren die Systemroutinen nach Themen in verschiedenen Bibliotheken (<em>Exec</em>, <em>DOS</em>, <em>Intuition</em> usw.) zusammengefasst (die sich entweder im ROM des Amigas befanden oder von Diskette bzw. Festplatte geladen wurden). Jede dieser Bibliotheken bestand neben den eigentlichen Routinen aus einer Sprungtabelle (und einer Struktur mit verschiedenen Verwaltungsinformationen für die Bibliothek, die aber für die Emulation keine Rolle spielt). Diese Tabelle befand sich unterhalb der Basisadresse der Bibliothek (die Adresse, die von <code>OpenLibrary</code> zurückgegeben wurde) und bestand aus absoluten Sprüngen zu den jeweiligen Routinen. Die Offsets in dieser Tabelle waren Teil der öffentlichen API der Bibliothek (beschrieben in den sogenannten FD-Dateien) und eine Routine einer Bibliothek wurde durch Laden der Basisadresse in das Register A6 und der Instruktion <code>jsr -&lt;Offset der Routine&gt;(a6)</code> aufgerufen. </p>
-<p>Wie kann nun ein Emulator so einen Aufruf abfangen und auf eine Routine im Emulator umlenken? Ich habe das so gelöst, dass sich die Systemroutinen nicht in VADM selber sondern in Shared Libraries befinden (die im Unterverzeichnis <code>libs</code> liegen). Die Bibliothek <code>libexec.so</code> enthält die Routinen <code>OpenLibrary</code> und <code>CloseLibrary</code>, <code>libdos.so</code> enthält <code>PutStr</code>. <code>libexec.so</code> wird vor dem Starten des Amiga-Programms geladen (mit <code>dlopen</code>) und die Basisadresse an einer festen Adresse abgelegt (im AmigaOS war das als einzige feste Adresse die Adresse 4, bei VADM habe ich eine andere Adresse verwendet). Das Laden von <code>libdos.so</code> erfolgt durch den Aufruf der Systemroutine <code>OpenLibrary</code> im Amiga-Programm (die dann wiederum <code>dlopen</code> verwendet).</p>
-<p>Zusätzlich zu den erwähnten Routinen enthalten beide Bibliotheken auch noch eine Routine zum Erzeugen der gerade beschriebenen Sprungtabelle. Allerdings sieht diese Tabelle etwas anders aus als die Sprungtabellen im AmigaOS, und das nicht nur weil sie natürlich aus Instruktionen für Intel-Prozessoren besteht. Tatsächlich werden sogar zwei Tabellen erzeugt, aber zu der zweiten Tabelle komme ich gleich. Für VADM ist der Normalfall nämlich, dass eine Routine <em>nicht</em> implementiert ist (weil ich ja nur drei von mehreren Hundert Routinen implementiert habe). In diesem Fall besteht der Eintrag in der ersten Tabelle für die entsprechende Routine nur aus den Instruktionen <code>INT3</code> und <code>RET</code>. Das bedeutet, dass beim Aufruf einer nicht implementierten Routine ein Interrupt erzeugt wird, der wiederum ein SIGTRAP-Signal erzeugt, und das hat zur Folge, dass das Amiga-Programm mit einer Fehlermeldung beendet wird.</p>
-<p>Interessanter wird es natürlich wenn ein Routine implementiert ist. Dann besteht der Eintrag in der ersten Sprungtabelle tatsächlich aus einem Sprung, allerdings noch nicht zu der Routine selber. Warum ist das so? Erstens wäre in dieser Tabelle nicht genügend Platz dafür. Die Einträge liegen nämlich nur 6 Bytes auseinander (und die Offsets sind ja durch die API vorgegeben). Diese 6 Bytes waren auf dem Amiga mit seinen 32-bittigen Adressen für einen absoluten Sprung ausreichend, auf einem Rechner mit 64-bittigem Intel-Prozessor sind sie es aber nicht. Zweitens müssen vor dem Aufruf der Routine noch einige Vorbereitungen getroffen werden. Aus diesen beiden Gründen befinden sich in der ersten Sprungtabelle für die implementierten Routinen <em>relative</em> Sprünge (die bei Intel-Prozessoren nur 5 Bytes benötigen) zu <a href="https://en.wikipedia.org/wiki/Thunk">Thunks</a> in einer zweiten Tabelle. In diesen Thunks passiert folgendes:</p>
-<ul>
-<li>Der Name der aufgerufenen Routine wird geloggt. Dazu sind die Namen der Routinen in einer Datenstruktur in der jeweiligen Shared Library abgelegt.</li>
-<li>Die Register, die im AmigaOS über einen Funktionsaufruf hinweg erhalten bleiben mussten, werden auf dem Stack gesichert (weil sie ja möglicherweise von der aufgerufenen Routine verändert werden könnten).</li>
-<li>Die Argumente der Routine werden von den Registern, in denen sie vom Amiga-Programm gemäss der AmigaOS-ABI abgelegt wurden, in die entsprechenden Register der x86-64-ABI (<sup id="fnref:system-v-abi"><a class="footnote-ref" href="#fn:system-v-abi">7</a></sup>) verschoben. Das bedeutet zum Beispiel, dass das übersetzte Amiga-Programm beim Aufruf einer Routine, die ihr erstes Argument im Register A1 erwartet, dieses im Register ECX ablegt (entsprechend dem oben erwähnten Register-Mapping). Laut der x86-64-ABI muss sich das erste Argument einer Funktion jedoch im Register RDI bzw. EDI befinden. Der Thunk würde in diesem Fall also die Instruktion <code>mov edi, ecx</code> enthalten.</li>
-<li>Die Routine wird aufgerufen (mit der Instruktion <em>CALL</em>).</li>
-<li>Der Rückgabewert der Routine wird vom Register EAX (x86-64-ABI) in das entsprechende Register gemäss der AmigaOS-ABI (üblicherweise D0 = R8D) verschoben.</li>
-<li>Die gesicherten Register werden wiederhergestellt.</li>
-</ul>
-<p>Du fragst dich jetzt vielleicht woher diese Thunks kommen. Sie befinden sich nicht etwa in fertiger Form in der Shared Library sondern werden erst beim Laden einer Bibliothek erzeugt (von den Routinen <code>setup_jump_tables</code> und <code>emit_thunk_for_func</code> in der Datei <code>execute.c</code>). Dazu wird eine Datenstruktur aus der Shared Library genutzt, die zu jeder Routine in der Bibliothek</p>
-<ul>
-<li>den Offset in der ersten Sprungtabelle</li>
-<li>den Namen (wie schon oben erwähnt)</li>
-<li>die Registerbelegung (Argumente und Rückgabewert)</li>
-<li>und die Adresse der Routine in der Shared Library (natürlich nur für die implementierten Routinen)</li>
-</ul>
-<p>enthält. Die Registerbelegung ist dabei in dem gleichen Format codiert, das auch die <em>syscall</em>- bzw. <em>libcall</em>-Pragmas in den Header-Dateien des AmigaOS verwendeten. Das ist natürlich kein Zufall sondern rührt daher, dass ich die gerade beschriebene Datenstruktur aus eben diesen Header-Dateien erzeugt habe.</p>
-<p>Das nachfolgende Bild zeigt nochmal den Ablauf beim Aufruf einer Routine.</p>
-<p><img alt="Ausführen des Programms" src="https://wiemerc.github.io/images/VADM/system-call.svg"></p>
-<h1>Demonstration des Programms</h1>
-<p>Die folgenden Listings zeigen die Ausgabe von VADM während es das Programm <em>loop</em> ausführt, zusammen mit einigen erläuternden Kommentaren.</p>
-<p>Als erstes wird das Programm geladen:</p>
-<div class="highlight"><pre><span></span><code>$ ./vadm loop
-vadm.c:26            | main                 | INFO  | loading program...
-loader.c:47          | load_program         | DEBUG | installing signal handler for SIGSEGV
-loader.c:58          | load_program         | DEBUG | mapping file &#39;loop&#39; into memory
-loader.c:75          | load_program         | DEBUG | file mapped at address 0x7feb9c5cb000
-loader.c:77          | load_program         | DEBUG | reading individual hunks
-loader.c:84          | load_program         | DEBUG | reading next block of hunk #0
-loader.c:88          | load_program         | DEBUG | block type is HUNK_HEADER
-loader.c:111         | load_program         | DEBUG | creating memory mapping for hunks
-loader.c:126         | load_program         | DEBUG | size (in bytes) of hunk #0 = 72, will be stored at 0x100000
-loader.c:126         | load_program         | DEBUG | size (in bytes) of hunk #1 = 44, will be stored at 0x110000
-loader.c:126         | load_program         | DEBUG | size (in bytes) of hunk #2 = 4, will be stored at 0x120000
-loader.c:84          | load_program         | DEBUG | reading next block of hunk #0
-loader.c:134         | load_program         | DEBUG | block type is HUNK_CODE / HUNK_DATA
-loader.c:136         | load_program         | DEBUG | copying code / data (72 bytes) to mapped memory region at 0x100000
-loader.c:84          | load_program         | DEBUG | reading next block of hunk #0
-loader.c:163         | load_program         | DEBUG | block type is HUNK_RELOC32
-loader.c:177         | load_program         | DEBUG | applying reloc referencing hunk #1 at position 6
-loader.c:177         | load_program         | DEBUG | applying reloc referencing hunk #1 at position 38
-loader.c:177         | load_program         | DEBUG | applying reloc referencing hunk #2 at position 24
-loader.c:177         | load_program         | DEBUG | applying reloc referencing hunk #2 at position 30
-loader.c:177         | load_program         | DEBUG | applying reloc referencing hunk #2 at position 56
-loader.c:84          | load_program         | DEBUG | reading next block of hunk #0
-loader.c:192         | load_program         | DEBUG | block type is HUNK_SYMBOL
-loader.c:84          | load_program         | DEBUG | reading next block of hunk #0
-loader.c:206         | load_program         | DEBUG | block type is HUNK_END
-loader.c:84          | load_program         | DEBUG | reading next block of hunk #1
-loader.c:134         | load_program         | DEBUG | block type is HUNK_CODE / HUNK_DATA
-loader.c:136         | load_program         | DEBUG | copying code / data (44 bytes) to mapped memory region at 0x110000
-loader.c:84          | load_program         | DEBUG | reading next block of hunk #1
-loader.c:192         | load_program         | DEBUG | block type is HUNK_SYMBOL
-loader.c:84          | load_program         | DEBUG | reading next block of hunk #1
-loader.c:206         | load_program         | DEBUG | block type is HUNK_END
-loader.c:84          | load_program         | DEBUG | reading next block of hunk #2
-loader.c:156         | load_program         | DEBUG | block type is HUNK_BSS
-loader.c:158         | load_program         | DEBUG | zeroing mapped memory region at 0x120000 (4 bytes)
-loader.c:84          | load_program         | DEBUG | reading next block of hunk #2
-loader.c:192         | load_program         | DEBUG | block type is HUNK_SYMBOL
-loader.c:84          | load_program         | DEBUG | reading next block of hunk #2
-loader.c:206         | load_program         | DEBUG | block type is HUNK_END
-</code></pre></div>
-
-<p>Danach beginnt das Ausführen des Amiga-Programms, und zwar damit, dass die erste TU angelegt wird. Dazu ist noch zu sagen, dass das Amiga-Programm in einem separaten Prozess läuft. Der Grund dafür ist, dass ja nicht implementierte Bibliotheksroutinen wie schon erwähnt ein SIGTRAP-Signal erzeugen. Dieses Signal würde VADM normalerweise einfach beenden aber so kann der Eltern-Prozess den Tod seines Kindes feststellen und eine entsprechende Fehlermeldung ausgeben.</p>
-<div class="highlight"><pre><span></span><code>vadm.c:31            | main                 | INFO  | initializing translation cache and setting up first TU...
-tlcache.c:87         | tc_put_addr          | DEBUG | putting mapping 0x100000 -&gt; 0x7feb9c3bc000 into cache
-vadm.c:39            | main                 | INFO  | executing program...
-</code></pre></div>
-
-<p>Hier wird zuerst noch wie schon oben erwähnt die Exec-Bibliothek geladen.</p>
-<div class="highlight"><pre><span></span><code>execute.c:141        | exec_program         | DEBUG | loading Exec library
-execute.c:108        | load_library         | DEBUG | dlopen()ing library &#39;libs/libexec.so&#39;
-execute.c:119        | load_library         | DEBUG | setting up library jump tables
-execute.c:97         | setup_jump_tables    | DEBUG | creating entry with jump and thunk for function CloseLibrary()
-execute.c:97         | setup_jump_tables    | DEBUG | creating entry with jump and thunk for function OpenLibrary()
-execute.c:164        | exec_program         | DEBUG | guest is starting...
-</code></pre></div>
-
-<p>Jetzt wird die erste TU übersetzt. Das endet damit, dass die zwei nachfolgenden TUs angelegt werden.</p>
-<div class="highlight"><pre><span></span><code>translate.c:659      | translate_tu         | DEBUG | building opcode handler table
-translate.c:670      | translate_tu         | DEBUG | translating TU with source address 0x100000 and destination address 0x7feb9c3bc000
-translate.c:683      | translate_tu         | DEBUG | looking up opcode 0x2c78 in opcode handler table
-translate.c:350      | m68k_movea           | DEBUG | translating instruction MOVEA
-translate.c:355      | m68k_movea           | DEBUG | destination register is A6
-translate.c:81       | extract_operand      | DEBUG | operand is 16-bit address 0x0004
-translate.c:683      | translate_tu         | DEBUG | looking up opcode 0x227c in opcode handler table
-translate.c:350      | m68k_movea           | DEBUG | translating instruction MOVEA
-translate.c:355      | m68k_movea           | DEBUG | destination register is A1
-translate.c:96       | extract_operand      | DEBUG | operand is immediate value 0x00110000
-translate.c:683      | translate_tu         | DEBUG | looking up opcode 0x7000 in opcode handler table
-translate.c:383      | m68k_moveq           | DEBUG | translating instruction MOVEQ
-translate.c:384      | m68k_moveq           | DEBUG | destination register is D0
-translate.c:385      | m68k_moveq           | DEBUG | immediate value = 0
-translate.c:683      | translate_tu         | DEBUG | looking up opcode 0x4eae in opcode handler table
-translate.c:312      | m68k_jsr             | DEBUG | translating instruction JSR
-translate.c:74       | extract_operand      | DEBUG | operand is register A6 with offset
-translate.c:683      | translate_tu         | DEBUG | looking up opcode 0x4a80 in opcode handler table
-translate.c:477      | m68k_tst_32          | DEBUG | translating instruction TST
-translate.c:60       | extract_operand      | DEBUG | operand is register D0
-translate.c:683      | translate_tu         | DEBUG | looking up opcode 0x6700 in opcode handler table
-translate.c:235      | m68k_bcc             | DEBUG | translating instruction BCC
-translate.c:239      | m68k_bcc             | DEBUG | 16-bit offset = 48
-translate.c:261      | m68k_bcc             | DEBUG | BEQ =&gt; JE
-translate.c:276      | m68k_bcc             | DEBUG | setting up TU of branch taken
-tlcache.c:87         | tc_put_addr          | DEBUG | putting mapping 0x100044 -&gt; 0x7feb9c3bc400 into cache
-translate.c:281      | m68k_bcc             | DEBUG | setting up TU of branch not taken
-tlcache.c:87         | tc_put_addr          | DEBUG | putting mapping 0x100016 -&gt; 0x7feb9c3bc800 into cache
-translate.c:695      | translate_tu         | DEBUG | instruction is the terminal instruction in this TU - continuing execution of guest
-</code></pre></div>
-
-<p>Die erste TU wird ausgeführt. In dieser TU wird die DOS-Bibliothek geöffnet.</p>
-<div class="highlight"><pre><span></span><code>execute.c:18         | log_func_name        | DEBUG | guest called library function OpenLibrary()
-execute.c:108        | load_library         | DEBUG | dlopen()ing library &#39;libs/libdos.so&#39;
-execute.c:119        | load_library         | DEBUG | setting up library jump tables
-execute.c:97         | setup_jump_tables    | DEBUG | creating entry with jump and thunk for function PutStr()
-</code></pre></div>
-
-<p>Die nächste TU (#3 im Diagramm oben) wird übersetzt...</p>
-<div class="highlight"><pre><span></span><code>translate.c:670      | translate_tu         | DEBUG | translating TU with source address 0x100016 and destination address 0x7feb9c3bc800
-translate.c:683      | translate_tu         | DEBUG | looking up opcode 0x23c0 in opcode handler table
-translate.c:400      | m68k_move            | DEBUG | translating instruction MOVE
-translate.c:60       | extract_operand      | DEBUG | operand is register D0
-translate.c:88       | extract_operand      | DEBUG | operand is 32-bit address 0x00120000
-translate.c:683      | translate_tu         | DEBUG | looking up opcode 0x2c79 in opcode handler table
-translate.c:350      | m68k_movea           | DEBUG | translating instruction MOVEA
-translate.c:355      | m68k_movea           | DEBUG | destination register is A6
-translate.c:88       | extract_operand      | DEBUG | operand is 32-bit address 0x00120000
-translate.c:683      | translate_tu         | DEBUG | looking up opcode 0x7403 in opcode handler table
-translate.c:383      | m68k_moveq           | DEBUG | translating instruction MOVEQ
-translate.c:384      | m68k_moveq           | DEBUG | destination register is D2
-translate.c:385      | m68k_moveq           | DEBUG | immediate value = 3
-translate.c:683      | translate_tu         | DEBUG | looking up opcode 0x223c in opcode handler table
-translate.c:400      | m68k_move            | DEBUG | translating instruction MOVE
-translate.c:96       | extract_operand      | DEBUG | operand is immediate value 0x0011000c
-translate.c:60       | extract_operand      | DEBUG | operand is register D1
-translate.c:683      | translate_tu         | DEBUG | looking up opcode 0x4eae in opcode handler table
-translate.c:312      | m68k_jsr             | DEBUG | translating instruction JSR
-translate.c:74       | extract_operand      | DEBUG | operand is register A6 with offset
-translate.c:683      | translate_tu         | DEBUG | looking up opcode 0x5382 in opcode handler table
-translate.c:447      | m68k_subq_32         | DEBUG | translating instruction SUBQ
-translate.c:452      | m68k_subq_32         | DEBUG | immediate value = 1
-translate.c:60       | extract_operand      | DEBUG | operand is register D2
-translate.c:683      | translate_tu         | DEBUG | looking up opcode 0x66f2 in opcode handler table
-translate.c:235      | m68k_bcc             | DEBUG | translating instruction BCC
-translate.c:249      | m68k_bcc             | DEBUG | 8-bit offset = -14
-translate.c:257      | m68k_bcc             | DEBUG | BNE =&gt; JNE
-translate.c:276      | m68k_bcc             | DEBUG | setting up TU of branch taken
-tlcache.c:87         | tc_put_addr          | DEBUG | putting mapping 0x100024 -&gt; 0x7feb9c3bcc00 into cache
-translate.c:281      | m68k_bcc             | DEBUG | setting up TU of branch not taken
-tlcache.c:87         | tc_put_addr          | DEBUG | putting mapping 0x100032 -&gt; 0x7feb9c3bd000 into cache
-translate.c:695      | translate_tu         | DEBUG | instruction is the terminal instruction in this TU - continuing execution of guest
-</code></pre></div>
-
-<p>...und ausgeführt. Hier wird die Schleife zum ersten Mal durchlaufen und der Text ausgegeben.</p>
-<div class="highlight"><pre><span></span><code>execute.c:18         | log_func_name        | DEBUG | guest called library function PutStr()
-&gt;&gt;&gt; Only Amiga made it possible
-</code></pre></div>
-
-<p>Die nächste TU (#4) wird übersetzt. Die nachfolgenden TUs (#4 selber weil es sich ja um eine Schleife handelt und #5) befinden sich dieses Mal schon im Translation Cache, deswegen müssen sie nicht mehr angelegt werden.</p>
-<div class="highlight"><pre><span></span><code>translate.c:670      | translate_tu         | DEBUG | translating TU with source address 0x100024 and destination address 0x7feb9c3bcc00
-translate.c:683      | translate_tu         | DEBUG | looking up opcode 0x223c in opcode handler table
-translate.c:400      | m68k_move            | DEBUG | translating instruction MOVE
-translate.c:96       | extract_operand      | DEBUG | operand is immediate value 0x0011000c
-translate.c:60       | extract_operand      | DEBUG | operand is register D1
-translate.c:683      | translate_tu         | DEBUG | looking up opcode 0x4eae in opcode handler table
-translate.c:312      | m68k_jsr             | DEBUG | translating instruction JSR
-translate.c:74       | extract_operand      | DEBUG | operand is register A6 with offset
-translate.c:683      | translate_tu         | DEBUG | looking up opcode 0x5382 in opcode handler table
-translate.c:447      | m68k_subq_32         | DEBUG | translating instruction SUBQ
-translate.c:452      | m68k_subq_32         | DEBUG | immediate value = 1
-translate.c:60       | extract_operand      | DEBUG | operand is register D2
-translate.c:683      | translate_tu         | DEBUG | looking up opcode 0x66f2 in opcode handler table
-translate.c:235      | m68k_bcc             | DEBUG | translating instruction BCC
-translate.c:249      | m68k_bcc             | DEBUG | 8-bit offset = -14
-translate.c:257      | m68k_bcc             | DEBUG | BNE =&gt; JNE
-translate.c:276      | m68k_bcc             | DEBUG | setting up TU of branch taken
-translate.c:607      | setup_tu             | DEBUG | TU with source address 0x100024 is already in the cache - nothing to do
-translate.c:281      | m68k_bcc             | DEBUG | setting up TU of branch not taken
-translate.c:607      | setup_tu             | DEBUG | TU with source address 0x100032 is already in the cache - nothing to do
-translate.c:695      | translate_tu         | DEBUG | instruction is the terminal instruction in this TU - continuing execution of guest
-</code></pre></div>
-
-<p>Die TU wird zweimal ausgeführt. Dann wird die Schleife verlassen.</p>
-<div class="highlight"><pre><span></span><code>execute.c:18         | log_func_name        | DEBUG | guest called library function PutStr()
-&gt;&gt;&gt; Only Amiga made it possible
-execute.c:18         | log_func_name        | DEBUG | guest called library function PutStr()
-&gt;&gt;&gt; Only Amiga made it possible
-</code></pre></div>
-
-<p>Die letzte TU (#5) wird übersetzt und ausgeführt.</p>
-<div class="highlight"><pre><span></span><code>translate.c:670      | translate_tu         | DEBUG | translating TU with source address 0x100032 and destination address 0x7feb9c3bd000
-translate.c:683      | translate_tu         | DEBUG | looking up opcode 0x2c78 in opcode handler table
-translate.c:350      | m68k_movea           | DEBUG | translating instruction MOVEA
-translate.c:355      | m68k_movea           | DEBUG | destination register is A6
-translate.c:81       | extract_operand      | DEBUG | operand is 16-bit address 0x0004
-translate.c:683      | translate_tu         | DEBUG | looking up opcode 0x2279 in opcode handler table
-translate.c:350      | m68k_movea           | DEBUG | translating instruction MOVEA
-translate.c:355      | m68k_movea           | DEBUG | destination register is A1
-translate.c:88       | extract_operand      | DEBUG | operand is 32-bit address 0x00120000
-translate.c:683      | translate_tu         | DEBUG | looking up opcode 0x4eae in opcode handler table
-translate.c:312      | m68k_jsr             | DEBUG | translating instruction JSR
-translate.c:74       | extract_operand      | DEBUG | operand is register A6 with offset
-translate.c:683      | translate_tu         | DEBUG | looking up opcode 0x7000 in opcode handler table
-translate.c:383      | m68k_moveq           | DEBUG | translating instruction MOVEQ
-translate.c:384      | m68k_moveq           | DEBUG | destination register is D0
-translate.c:385      | m68k_moveq           | DEBUG | immediate value = 0
-translate.c:683      | translate_tu         | DEBUG | looking up opcode 0x4e75 in opcode handler table
-translate.c:432      | m68k_rts             | DEBUG | translating instruction RTS
-translate.c:695      | translate_tu         | DEBUG | instruction is the terminal instruction in this TU - continuing execution of guest
-execute.c:18         | log_func_name        | DEBUG | guest called library function CloseLibrary()
-execute.c:166        | exec_program         | DEBUG | guest is terminating...
-execute.c:191        | exec_program         | INFO  | guest has exited with status 0
-</code></pre></div>
-
-<h1>Noch ein paar Anmerkungen zur Entwicklung</h1>
-<p>Wie du dir wahrscheinlich vorstellen kannst ist das Entwickeln eines solchen Programms kein ganz einfaches Unterfangen. Nachfolgend möchte ich ein paar Dinge erwähnen, die mir dabei geholfen haben.</p>
-<ul>
-<li>Generell bin ich ein grosser Freund von Logging und das habe ich auch bei VADM ausgiebig genutzt, wie man ja an der Ausgabe des Programms sehen kann.</li>
-<li>Ich habe relativ viele Unit-Tests verwendet, insbesondere um die Generierung des Codes zu testen. Ich wollte dadurch sicherstellen, dass die einzelnen Instruktionen für sich korrekt übersetzt werden bevor ich den übersetzten Code zum ersten Mal ausführe. Dazu habe ich für jeden der Handler für die Instruktionen eine Reihe von Testfällen geschrieben (die für das Programm <em>loop</em> relevant sind). Diese Testfälle bestehen jeweils aus den Bytes, die die Motorola-Instruktion codieren und den Bytes für die entsprechende Intel-Instruktion. Der Testcode "füttert" dann einfach die Handler mit ersteren und vergleicht das Ergebnis mit letzteren.</li>
-<li>Trotz der Unit Tests gab es natürlich immer noch genügend Fehler, die es zu debuggen galt. Dazu habe ich den GDB mit der Erweiterung <a href="https://github.com/pwndbg/pwndbg">Pwndbg</a> verwendet. Pwndbg bietet neben vielen anderen Features beim schrittweisen Ausführen eines Programms eine laufend aktualisierte Anzeige des Quellcodes (wenn vorhanden, was bei dem generierten Code natürlich nicht der Fall war), dem entsprechenden Assembler-Code, der Prozessorregister und des Stacks in verschiedenen Fenstern (etwas, das der GDB von Haus aus nicht kann). Das hat die Fehlersuche sehr erleichtert.</li>
-</ul>
-<p>Bei VADM handelt es sich natürlich nur um einen Proof-of-concept, der nur ein ganz einfaches Amiga-Programm ausführen kann. Wenn man daraus ein tatsächlich nutzbares Programm machen wollte müsste man natürlich viel mehr Systemroutinen implementieren, aber vor allem das Übersetzen des Codes überarbeiten. Zum einen wäre es sinnvoll, nicht für jede Instruktion des Motorola-Prozessors (deren es ja ziemlich viele gibt) eine eigene Routine zu schreiben. Mit etwas Nachdenken könnte man wahrscheinlich eine (oder vielleicht auch ein paar wenige) generische Routine(n) schreiben und die für die einzelnen Instruktionen unterschiedlichen Daten (Motorola-Opcode, entsprechender Intel-Opcode, welche Operanden hat die Instruktion, an welcher Stelle der codierten Instruktion befinden sich diese und so weiter) in einer Tabelle ablegen. Eventuell müsste man sich dazu eine kleine "Beschreibungssprache" ausdenken. Aber das überlasse ich gerne dem geneigten Leser als Übung ;-) Zum anderen würde man natürlich in einem professionellen Programm das Codieren der Intel-Instruktionen nicht selber implementieren sondern dafür auf eine bestehende Bibliothek zurückgreifen. Bei VADM habe ich das nur gemacht weil ich mal eine Ahnung davon bekommen wollte, was zum Beispiel ein Compiler so alles tun muss wenn er den Maschinencode generiert. Und ich habe festgestellt, dass das keine ganz triviale Aufgabe ist... Beispiele für Bibliotheken zur Code-Generierung sind <a href="https://www.keystone-engine.org/">Keystone</a>, <a href="https://asmjit.com/">AsmJit</a> oder auch <a href="http://llvm.org/">LLVM</a>, wenn man den Zwischenschritt über die LLVM <em>Intermediate Representation</em> (IR) gehen würde.</p>
-<p>Damit bin ich am Ende des Artikels angelangt. Ich hoffe, ich konnte einen Teil der vielen Dinge, die ich beim Schreiben von VADM und dieses Artikels (was von der ersten Idee zu dem Projekt bis zum fertigen Artikel fast zwei Jahre gedauert hat) gelernt habe, weitergeben. Der vollständige Quellcode von VADM findet sich auf <a href="https://github.com/wiemerc/VADM2.git">GitHub</a> und steht unter der BSD-Lizenz.</p>
-<p>Wie immer freue ich mich über Kommentare, Anmerkungen und Fragen und bin unter der Adresse <a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#99;&#111;&#110;&#115;&#116;&#97;&#110;&#116;&#105;&#110;&#46;&#119;&#105;&#101;&#109;&#101;&#114;&#64;&#103;&#109;&#120;&#46;&#100;&#101;">&#99;&#111;&#110;&#115;&#116;&#97;&#110;&#116;&#105;&#110;&#46;&#119;&#105;&#101;&#109;&#101;&#114;&#64;&#103;&#109;&#120;&#46;&#100;&#101;</a> erreichbar.</p>
-<div class="footnote">
-<hr>
-<ol>
-<li id="fn:amiga-guru-book">
-<p>Babel, Ralph (1989): <em>Das Amiga Guru-Buch</em>&#160;<a class="footnote-backref" href="#fnref:amiga-guru-book" title="Jump back to footnote 1 in the text">&#8617;</a></p>
-</li>
-<li id="fn:amigados-manual">
-<p>Commodore-Amiga Inc. (1991): <em>The AmigaDOS Manual, Third Edition</em>, Bantam Books&#160;<a class="footnote-backref" href="#fnref:amigados-manual" title="Jump back to footnote 2 in the text">&#8617;</a></p>
-</li>
-<li id="fn:vmware-paper">
-<p>Adams, Keith; Agesen, Ole (2006): <a href="https://www.vmware.com/pdf/asplos235_adams.pdf"><em>A Comparison of Software and Hardware Techniques for x86 Virtualization</em></a>, International Conference on Architectural Support for Programming Languages and Operating Systems 2006&#160;<a class="footnote-backref" href="#fnref:vmware-paper" title="Jump back to footnote 3 in the text">&#8617;</a></p>
-</li>
-<li id="fn:motorola-manual">
-<p>Motorola Inc. (1992): <a href="https://www.nxp.com/files-static/archives/doc/ref_manual/M68000PRM.pdf"><em>Motorola M68000 Family Programmer’s Reference Manual</em></a>&#160;<a class="footnote-backref" href="#fnref:motorola-manual" title="Jump back to footnote 4 in the text">&#8617;</a></p>
-</li>
-<li id="fn:intel-manual">
-<p>Intel Corporation (2016): <a href="https://www.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf"><em>Intel 64 and IA-32 Architectures Software Developer’s Manual, Volume 2: Instruction Set Reference</em></a>&#160;<a class="footnote-backref" href="#fnref:intel-manual" title="Jump back to footnote 5 in the text">&#8617;</a></p>
-</li>
-<li id="fn:encoding-instructions">
-<p><a href="http://www.c-jump.com/CIS77/CPU/x86/index.html"><em>Encoding Real x86 Instructions</em></a>&#160;<a class="footnote-backref" href="#fnref:encoding-instructions" title="Jump back to footnote 6 in the text">&#8617;</a></p>
-</li>
-<li id="fn:system-v-abi">
-<p>Lu, H. J.; Matz, Michael; Girkar, Milind; Hubicka, Jan; Jaeger, Andreas; Mitchell, Mark (2018): <a href="https://github.com/hjl-tools/x86-psABI/wiki/x86-64-psABI-1.0.pdf"><em>System V Application Binary Interface, AMD64 Architecture Processor Supplement</em></a>&#160;<a class="footnote-backref" href="#fnref:system-v-abi" title="Jump back to footnote 7 in the text">&#8617;</a></p>
-</li>
-</ol>
-</div>                </article>
+</footer><!-- /.post-info --><p>Ich beschäftige mich ja seit einigen Jahren in meiner Freizeit mit Systemprogrammierung und habe auch schon einige Projekte in dem Bereich gemacht, unter anderem <a href="https://wiemerc.github.io/gastarbeiter-windows-programme-auf-linux-ausfuhren.html">WoL</a> und <a href="https://wiemerc.github.io/alte-freundin-virtuelle-maschine-fur-amiga-programme.html">VADM</a>. Das Projekt, um das es in diesem Artikel geht, hat auch mit Systemprogrammierung zu tun, aber es gibt ein paar Unterschiede zu den früheren Projekten. Aber erst mal, was ist das überhaupt für ein Projekt? Wie der Titel schon sagt geht es um einen Remote Debugger für den Commodore Amiga namens <em>cwdbg</em>. Aber was bedeutet das genau? Ich gehe mal davon aus, dass ihr wisst, was ein Debugger ist. Der Debugger, den ich geschrieben habe, dient zur Fehlersuche von in Assembler oder C geschriebenen Programmen für den Commodore Amiga. Der Amiga, falls ihr das nicht wisst, war ein Heimcomputer der späten 1980er und frühen 1990er Jahre und <em>der</em> Computer meiner Jugend. Spätestens seit VADM sollte klar sein, dass ich mich immer noch gerne mit ihm beschäftige. <em>Remote</em> bedeutet allerdings, dass der Debugger selber nur zu einem kleinen Teil auf dem Amiga läuft und zum grösseren Teil auf einem modernen Rechner unter Linux, macOS oder Windows. Daher auch der Titel dieses Artikels - das Projekt verbindet wie ein Wurmloch verschiedene Zeiten, in dem Fall moderne Technologien mit Retro-Computing.</p>
+<p>Was ist nun bei diesem Projekt so besonders? Bei meinen anderen Projekten handelte es sich immer nur um Proofs of Concept ohne echte Funktionalität. Als ich mit cwdbg begann wollte ich eigentlich nur lernen, wie ein Debugger überhaupt funktioniert und sehen, ob ich einen für den Amiga schreiben könnte. Bei den ersten Versionen handelte es sich demzufolge auch genau um solche Proofs of Concept. Aber nach einer Weile dachte ich mir, dass es schön wäre, auch mal ein Programm zu schreiben, das zumindest halbwegs benutzbar wäre. Das hat natürlich den Umfang deutlich vergrössert und führte dazu, dass ich mittlerweile (mit Unterbrechungen) schon seit über vier Jahren an dem Projekt arbeite. Es ist sicher nicht so, dass der Debugger jetzt wirklich "fertig" wäre. Aber er befindet sich in einem vorzeigbaren Zustand, was ich zum Anlass genommen habe, diesen Artikel zu schreiben. Den Debugger in Aktion erleben kann man in zwei Screencasts, <a href="https://wiemerc.github.io/images/cwdbg/debugging-asm-prog.mp4">einmal</a> beim Debuggen eines Assembler-Programms, <a href="https://wiemerc.github.io/images/cwdbg/debugging-c-prog.mp4">einmal</a> beim Debuggen eines in C geschriebenen Programms.</p>
+<p>In den vier Jahren haben sich immer wieder die Ziele des Projekts geändert. Ursprünglich hatte ich geplant, dass der Debugger komplett auf dem Amiga läuft, eventuell sogar mit einer GUI und einem ARexx-Port. Aber nach einer Weile empfand ich die Programmierung in C doch als relativ mühsam, vor allem im Vergleich zu Python, der Sprache, mit der ich beruflich arbeite. Besonders schreckte mich die Vorstellung ab, das Einlesen und Verarbeiten der Debug-Informationen im STABS-Format nochmal in C schreiben zu müssen, einen Prototypen dafür hatte ich schon in Python geschrieben. So entstand die Idee, den Debugger in einen kleinen, in C und Assembler geschriebenen Server und einen in Python geschriebenen Host aufzuteilen. Der Server würde auf dem Amiga laufen, der Host auf einem anderen Rechner mit Linux, Windows oder macOS als Betriebssystem. Und mit Python als Programmiersprache für den Host wäre es viel einfacher und schneller möglich, Features zu implementieren. Genau so ist cwdbg jetzt aufgebaut.</p>
+<p>Am Anfang des Projekts war das Debuggen auf Quellcode-Ebene das hauptsächliche Ziel. Nach einer Weile kamen dann Features dazu, die eher beim Debuggen von Programmen, deren Quellcode man gar nicht hat, nützlich sind, wie zum Beispiel das Annotieren von Aufrufen von Systemroutinen oder das Disassemblieren von beliebigen Speicherbereichen.</p>
+<p>Eine weiterer Unterschied zu früheren Projekten ist, dass ich den Code mittlerweile schon einige Mal ziemlich grundlegend umstrukturiert habe. Ich stellte einfach beim Entwickeln immer wieder fest, dass die bisherige Struktur für die Weiterentwicklung oder auch die neue Ausrichtung des Projekts (z. B. die Aufteilung in Host und Server) hinderlich war.</p>
+<p>Ich werde in diesem Artikel nicht erklären, wie ein Debugger grundsätzlich funktioniert. Für eine gut lesbare Einführung in das Thema kann ich die Reihe von <a href="https://eli.thegreenplace.net/2011/01/23/how-debuggers-work-part-1/">Artikeln</a> von Eli Bendersky empfehlen, die auch mir sehr geholfen haben. Allerdings geht es in diesen Artikeln um Debugger, die auf Linux (und einem Intel-Prozessor) laufen. Im folgenden werde ich zeigen, wie das Ganze auf dem Amiga funktioniert und welchen speziellen Herausforderungen es dabei gab. Der wesentliche Unterschied ist, dass das AmigaOS keinerlei Unterstützung für Debugger bietet (wie <a href="https://en.wikipedia.org/wiki/Ptrace">ptrace</a> in Linux oder die <a href="https://docs.microsoft.com/en-us/windows/win32/debug/debugging-functions">Debugging API</a> in Windows). Allerdings ist auf dem Amiga aufgrund seiner Architektur auch keine Unterstützung durch das Betriebssystem nötig.</p>
+<h2>Ausführen des Programms</h2>
+<p>Als erstes muss ein Debugger natürlich das Programm, das "entwanzt" werden soll, ausführen können. Damit ist nicht nur das Starten des Programms (wie in einer Shell) gemeint, sondern auch Breakpoints, also das Anhalten des Programms an interessanten Stellen und das schrittweise Ausführen (Zeile für Zeile bzw. Instruktion für Instruktion).</p>
+<p>cwdbg führt das Programm in einem separaten Prozess aus (mit der Systemroutine <code>CreateNewProc</code>) und die beiden Prozesse, der Debugger und das sogenannte Target, kommunizieren über Signale miteinander (wie das auf dem Amiga eben so üblich war).</p>
+<p>Wie in dem zweiten Artikel der Reihe von Eli Bendersky beschrieben werden Breakpoints normalerweise implementiert, indem man an der Stelle im Code, an der man das Programm anhalten möchte, die Maschinensprache-Instruktion durch eine Interrupt- bzw. bei dem Motorola-680x0-Prozessor des Amigas eine Trap-Instruktion ersetzt. Zusätzlich bieten Prozessoren einen Einzelschritt- oder sogenannten Trace-Modus, in dem nach jeder ausgeführten Instruktion ein Interrupt bzw. eine Exception ausgelöst wird. Damit lässt sich ein schrittweises Ausführen des Programms auf Assembler-Ebene implementieren, was ich auch bei cwdbg so gemacht habe.</p>
+<p>Was passiert nun mit diesen Interrupts oder Exceptions? Bei modernen Betriebssystemen wird ein entsprechender Handler im Kernel aufgerufen und das Betriebssystem kümmert sich um die Bearbeitung. Bei Linux bedeutet das, wenn das Programm mit Hilfe von <code>ptrace</code> ausgeführt wird, dass ein Signal an den Eltern-Prozess geschickt wird.</p>
+<p>Auf dem Amiga gibt es, wie schon erwähnt, diesen Komfort nicht. Eine Exception führt normalerweise zu der berüchtigten <em>Guru Meditation</em> mit anschliessendem Neustart des Rechners. Ich musste als für cwdbg einen eigenen Exception Handler schreiben.</p>
+<p>Was macht nun dieser Exception Handler genau? Im Prinzip führt er einen Kontextwechsel durch, und zwar innerhalb eines Prozesses, nämlich des Target-Prozesses. Was bedeutet das genau? Zuerst wird der Prozess-Kontext, das heisst alle Register einschliesslich Program Counter (PC), Stack Pointer (SP) und Status-Register (SR) gesichert und dann wird der Supervisor-Modus, in dem der Exception Handler ausgeführt wird, verlassen und eine Routine des Debuggers aufgerufen. Es findet also ein Kontext-Wechsel von dem vom Debugger ausgeführten Programm zum Debugger selber statt, aber noch innerhalb des Prozesses, der für das ausgeführte Programm erzeugt wurde. Wenn sich die aufgerufene Routine beendet hat wird wieder zum Kontext des ausgeführten Programms gewechselt. Dabei werden die gesicherten Register wiederhergestellt (aus technischen Gründen ebenfalls in dem Exception Handler) und das Programm wird dann fortgesetzt. Weil so ein Exception Handler sehr nahe an der Hardware arbeitet und es dabei auf jede einzelne Instruktion ankommt habe ich ihn in Assembler geschrieben. Bis dahin hatte ich eigentlich keine Erfahrung mit Assembler, schon gar nicht mit dem Assembler für die Motorola-Prozessoren, und daher war der Exception Handler sicher einer der kniffligsten Teile von cwdbg. Hilfreich waren dabei <a href="http://www.mrjester.hapisan.com/04_MC68/">dieses</a> Tutorial und die Funktion <code>kprintf</code> aus der <code>debug.lib</code>, mit der man Ausgaben über die serielle Schnittstelle auch im Supervisor-Modus machen kann.</p>
+<p>Was macht dann diese Routine des Debuggers, die vom Exception Handler aufgerufen wird? Sie sendet ein Signal an den Debugger-Prozess, um ihm mitzuteilen, dass das Target angehalten hat. Anschliessend wartet sie auf ein Signal des Debugger-Prozesses, das der Debugger-Prozess dann schickt wenn der Benutzer das Programm weiter ausführen möchte. Davor kann der Benutzer das Programm untersuchen (sich z. B. Register- oder Speicherinhalte anschauen) und solange wird durch das Warten auf das Signal der Target-Prozess angehalten.</p>
+<p>Das folgende Bild zeigt nochmal den eben beschriebenen Ablauf, das Bild darunter den entsprechenden Ablauf in Linux.</p>
+<!--
+@startuml
+User -> Debugger: Requests breakpoint at address
+Debugger -> Target: Replaces first two bytes of instruction at this address with TRAP
+Debugger -> Target: Starts target in separate process
+Target -> Target: Executes TRAP instruction
+Target -> Target: Exception handler is called
+Target -> Target: Exception handler saves context and calls handle_stopped_target()
+Target -> Debugger: handle_stopped_target() sends signal and waits for reply (blocks target)
+Debugger -> User: Presents target state (next instruction, registers, stack)
+...
+User -> Debugger: Asks to continue target
+Debugger -> Target: Sends signal
+Target -> Target: handle_stopped_target() receives signal and returns to exception handler
+Target -> Target: Exception handler restores context and continues target
+@enduml
+-->
+<p><img alt="Programmablauf AmigaOS" src="https://wiemerc.github.io/images/cwdbg/general-flow-amigaos.svg"></p>
+<!--
+@startuml
+User -> Debugger: Requests breakpoint at address
+Debugger -> Target: Replaces first byte of instruction at this address with INT 3 (on Intel x86 processors)
+Debugger -> Target: Starts target in separate process
+Target -> Target: Executes INT 3 instruction
+Target -> Kernel: Interrupt handler is called
+Kernel -> Kernel: Saves target context and suspends target
+Kernel -> Debugger: Sends signal (SIGTRAP)
+Debugger -> User: Presents target state (next instruction, registers, stack)
+...
+User -> Debugger: Asks to continue target
+Debugger -> Kernel: Calls ptrace(), e. g. with PTRACE_CONT
+Kernel -> Target: Restores target context and resumes target
+@enduml
+-->
+<p><img alt="Programmablauf Linux" src="https://wiemerc.github.io/images/cwdbg/general-flow-linux.svg"></p>
+<h2>Disassembler</h2>
+<p>Ein wichtiger Bestandteil eines Debuggers ist natürlich ein Disassembler zum Anzeigen der einzelnen Instruktionen des Programms als Assembler-Code (es sein denn man beschränkt sich auf das Debuggen auf Quellcode-Ebene). Das Schreiben eines eigenen Disassemblers erschien mir aber doch zu aufwendig (und auch zu uninteressant), so dass ich mich nach einer fertigen Lösung umsah, die ich nutzen könnte. Fündig wurde ich bei <a href="https://github.com/kstenerud/Musashi">Musashi</a>, einem Emulator für den Motorola-680x0-Prozessor, der auch einen Disassembler beinhaltet. Diesen Code nutzte ich für die ersten Versionen, die noch komplett auf dem Amiga liefen. Nach der Aufteilung in Host und Server nutze ich die Bibliothek <a href="https://www.capstone-engine.org/">Capstone</a> für den Host. Interessanterweise nutzt Capstone aber auch den Disassembler von Musashi für Motorola-680x0-Code.</p>
+<h2>Debug-Informationen</h2>
+<p>Hätte ich mich auf das Debuggen auf Assembler-Ebene beschränkt wäre der Artikel jetzt zu Ende. Aber ich wollte in C geschriebene Programme ja auch auf Quellcode-Ebene mit cwdbg debuggen können, also Breakpoints im Quellcode setzen, das Programm Zeile für Zeile (und nicht nur Instruktion für Instruktion) ausführen und die Werte von Variablen anzeigen. Damit ein Debugger das machen kann braucht er Unterstützung vom Compiler in Form von Debug-Informationen. Diese Debug-Informationen enthalten im Allgemeinen eine Zuordnung von Zeilennummern im Quellcode zu Adressen im Maschinencode, eine Liste aller Funktionen und eine Beschreibung aller Variablen, nämlich welchen Typ und Gültigkeitsbereich sie haben und wo sie gespeichert sind (in welchem Register oder an welcher Speicheradresse).</p>
+<p>Da ich als Compiler den GCC verwende hatte ich zwei Möglichkeiten, was das Format dieser Debug-Informationen angeht - <a href="https://en.wikipedia.org/wiki/Stabs">STABS</a> und <a href="https://en.wikipedia.org/wiki/DWARF">DWARF</a>. DWARF ist zwar das modernere, aber auch deutlich komplexere Format. Und da ich das Einlesen und Verarbeiten der Debug-Informationen selber implementieren und nicht auf eine bestehende Bibliothek zurückgreifen wollte entschied ich mich für STABS. Eine gute Beschreibung dieses Formats findet sich <a href="https://opensource.apple.com/source/gdb/gdb-325/doc/stabs.pdf">hier</a>, zusätzlich habe ich auch ein bisschen im Quellcode der GNU Binutils gespickt.</p>
+<p>Die Debug-Informationen in diesem Format bestehen aus einer Liste von sogenannten <em><strong>S</strong>ymbol <strong>Ta</strong>ble <strong>S</strong>trings</em> (daher der Name des Formats), die die verschiedenen Elemente des Programms wie Funktionen und Variablen beschreiben. Im Prinzip stellen sie einen stark vereinfachten <a href="https://en.wikipedia.org/wiki/Abstract_syntax_tree">abstrakten Syntaxbaum</a> des Programms dar. Und genau so einen Baum baut sich der Debugger beim Einlesen der Debug-Informationen auf. Das war dann übrigens, obwohl das STABS-Format an sich relativ einfach ist, doch nicht ganz trivial zu implementieren. Warum braucht der Debugger überhaupt einen Syntaxbaum? Das liegt daran, dass er auch den Gültigkeitsbereich von Variablen kennen muss, also zum Beispiel welche lokalen Variablen in einer bestimmten Funktion definiert sind. Und der Gültigkeitsbereich einer Variablen ist im STABS-Format dadurch beschrieben, dass erst mal der Gültigkeitsbereich selber definiert wird und dann innerhalb dieses Gültigkeitsbereichs die entsprechenden Variablen, also eben in einer Baumstruktur.</p>
+<p>Aktuell (Dezember 2022) werden die Informationen, die die Typen der Variablen beschreiben, zwar eingelesen aber noch nicht verarbeitet. Damit ist cwdbg momentan noch nicht in der Lage, die Werte von Variablen auszugeben.</p>
+<h2>Remote Debugging über die serielle Schnittstelle</h2>
+<p>Wie schon erwähnt habe ich ja den Debugger nach eine Weile in einen Host und einen Server aufgeteilt. Aber wie sollten Server und Host (das sind übrigens die Begriffe, die auch der GDB verwendet) miteinander kommunizieren? Heutzutage würde so eine Kommunikation natürlich über TCP/IP laufen, und darauf aufsetzend würde man vielleicht eine REST API nutzen oder auch eine Bibliothek wie <a href="https://zeromq.org/">ZeroMQ</a> und die Daten würde man zum Beispiel mit <a href="https://developers.google.com/protocol-buffers">Google Protocol Buffers</a> serialisieren und deserialisieren. Aber zum einen wollte ich dem Geist der 1980er Jahre, aus denen der Amiga stammt, nicht untreu werden. Zum anderen hat es mich auch gereizt, mal ein eigenes Netzwerkprotokoll zu entwickeln.</p>
+<p>Die Entscheidung für die physikalische Schicht war schnell gefallen. Das konnte bei einem Projekt mit Retro-Bezug nur die serielle Schnittstelle sein. Aber die serielle Schnittstelle stellt ja erst mal nur einen Byte-Strom zur Verfügung. Möchte man, wie man das bei Protokollen ja üblicherweise macht, mit Paketen arbeiten, braucht man auf der nächsten Schicht ein sogenanntes <a href="https://en.wikipedia.org/wiki/Frame_(networking)">Framing-Protokoll</a>. Dabei liebäugelte ich kurz mit <a href="https://en.wikipedia.org/wiki/High-Level_Data_Link_Control">HDLC</a>. Das erschien mir dann aber doch zu kompliziert und ich entschied mich für das wesentlich einfachere, aber für meine Zwecke ausreichende <a href="https://en.wikipedia.org/wiki/Serial_Line_Internet_Protocol">SLIP</a>. Das wurde ja in der Anfangszeit des Internets gerne zur Übertragung von IP-Paketen über serielle Schnittstellen genutzt.</p>
+<p>Entgegen dieser ursprünglichen Verwendung nutze ich SLIP in diesem Projekt aber nicht, um IP-Pakete zu transportieren sondern die Pakete meines für den Debugger entwickelten Protokolls. Ich überspringe also sozusagen die Schichten 3 und 4 des OSI-Modells und mein Protokoll implementiert die Schichten 5 bis 7.</p>
+<p>Wie sieht nun dieses Protokoll genau aus? Es handelt sich um ein synchrones, binäres <a href="https://en.wikipedia.org/wiki/Request%E2%80%93response">Request-Response-Protokoll</a>. Das bedeutet, dass der Host eine Anfrage an den Server schickt und auf die Antwort des Servers wartet. Der Server bestätigt die Ausführung der gewünschten Aktion (zum Beispiel das Starten des Programms) oder meldet einen aufgetretenen Fehler. Sowohl Anfrage als auch Antwort können weitere Daten enthalten, zum Beispiel eine Speicheradresse beim Setzen eines Breakpoints oder der Speicherinhalt beim Auslesen eines Speicherbereichs. Zusätzlich meldet sich der Server bei dem Host jedes Mal wenn das Programm angehalten hat (wenn zum Beispiel ein Breakpoint erreicht wurde) und übermittelt ihm dabei den aktuellen Zustand des Programms (Grund des Anhaltens, die nächsten Instruktionen, der Inhalt der Register und der Anfang des Stacks). </p>
+<p><a href="https://stackoverflow.com/questions/1445387/how-do-you-design-a-serial-command-protocol-for-an-embedded-system">Hier</a> findet sich eine ganz interessante Diskussion zum Design eines Protokolls für die serielle Schnittstelle.  Das folgende Bild zeigt den Nachrichtenfluss bei einer typischen Debugging-Sitzung. Der Einfachheit halber fehlen in dem Bild die internen Abläufe im Server.</p>
+<!--
+@startuml
+User -> Host: command 'bpoint 0x...'
+Host -> Server: MSG_SET_BP
+Server -> Host: MSG_ACK
+User -> Host: command 'run'
+Host -> Server: MSG_RUN
+Server -> Host: MSG_ACK
+Server -> Target: runs target
+Target -> Target: target runs until a breakpoint / next instruction is hit
+Target -> Server: handles stopped target
+Server -> Host: MSG_TARGET_STOPPED
+Host -> Server: MSG_ACK
+Host -> User: display target infos and prompt
+User -> Host: command 'continue' / 'step'
+Host -> Server: MSG_CONT / MSG_STEP
+Server -> Host: MSG_ACK
+Server -> Target: continues target
+Target -> Target: target runs until completion
+Target -> Server: handles stopped target
+Server -> Host: MSG_TARGET_STOPPED
+Host -> Server: MSG_ACK
+Host -> User: display target infos and prompt
+@enduml
+-->
+<p><img alt="Nachrichtenfluss" src="https://wiemerc.github.io/images/cwdbg/message-flow.svg"></p>
+<p>Eine einzelne Protokollnachricht ist folgendermassen aufgebaut:</p>
+<p><img alt="Aufbau einer Protokollnachricht" src="https://wiemerc.github.io/images/cwdbg/protocol-message.svg"></p>
+<p>Zusätzlich zu dem Typ der Nachricht (<code>MSG_*</code>) und eventuellen Daten gibt es noch eine fortlaufende Sequenznummer und eine Prüfsumme. Mit der Sequenznummer könnten verlorengegangene oder nach einem Timeout wiederholte Nachrichten erkannt werden, mit der Prüfsumme Bitfehler bei der Übertragung. Weder Timeouts noch die Prüfsumme sind momentan (Dezember 2022) implementiert. </p>
+<p>Die Daten selber werden ohne weitere Informationen wie Typ oder Länge der einzelnen Elemente in Netzwerk-Byte-Reihenfolge (Big Endian) übertragen. Das bedeutet, dass der Empfänger immer genau wissen muss, welche Daten er vom Sender bekommt, aber so war die Datenübertragung deutlich einfacher zu implementieren als mit einem Datenformat wie <a href="https://en.wikipedia.org/wiki/ASN.1">ASN.1</a> oder <a href="https://en.wikipedia.org/wiki/External_Data_Representation">XDR</a>. Um das Packen und Entpacken der Daten nicht für jeden Nachrichtentyp separat implementieren zu müssen habe ich mir zwei Funktionen <code>pack_data()</code> und <code>unpack_data()</code> geschrieben, die analog zu den Funktionen <code>pack()</code> und <code>unpack()</code> aus dem Python-Modul <a href="https://docs.python.org/3/library/struct.html"><code>struct</code></a> einen Format-String als Parameter haben, der angibt, welche Typen die einzelnen Datenelemente haben. Anhand dieses Format-Strings werden dann die Datenelemente entsprechend in einen Bytestrom gepackt bzw. aus einem Bytestrom entpackt. Die Idee zu diesen Funktionen habe ich aus dem Buch <em>The Practice of Programming</em> von Brian Kernighan (übrigens ein sehr lesenswertes Buch).</p>
+<h2>UI mit Urwid</h2>
+<p>Nachdem ich mich entschieden hatte, den Debugger in einen Host und einen Server aufzuteilen, stellte sich die Frage, was für eine Benutzerschnittstelle der Host bekommen sollte. Natürlich hätte ein einfaches CLI ausgereicht, das hatte ja auch die ursprüngliche Version, die noch komplett auf dem Amiga lief. Aber irgendwann hatte ich die Idee, den Host mit einer UI auszustatten, die dem Benutzer die wichtigsten Informationen wie Programmstatus, die nächsten Instruktionen bzw den Quellcode des Programms, die Registerinhalte usw. bei jedem Stopp des Programms übersichtlich anzeigen würde. Inspiriert wurde ich dabei von <a href="https://github.com/pwndbg/pwndbg">pwndbg</a>, einer Erweiterung für den GDB. Weil ich mit der UI nur Informationen anzeigen wollte und die Steuerung des Debuggers weiterhin über die Kommandozeile erfolgen sollte entschied ich mich für eine <a href="https://en.wikipedia.org/wiki/Text-based_user_interface">TUI</a>. Das klingt vielleicht erst mal sehr nach den 1980er Jahren (z. B. hatte Turbo Pascal von Borland so eine UI) aber mein Eindruck ist, dass TUIs in den letzten Jahren wieder in Mode gekommen sind.</p>
+<p>Implementiert habe ich die TUI in diesem Projekt mit Hilfe von <a href="https://urwid.org/">Urwid</a>. Urwid ist eine Bibliothek für Python mit der üblichen Funktionalität einer GUI-Bibliothek wie verschiedene Widgets, Geometrie-Management und so weiter, nur eben für die Konsole. Damit ist die Erstellung einer TUI wesentlich einfacher als z. B. direkt mit <a href="https://en.wikipedia.org/wiki/Ncurses">ncurses</a>.</p>
+<h2>Entwicklungsumgebung</h2>
+<p>Für diejenigen, die sich auch für Retro-Computing interessieren, ist vielleicht ganz interessant, wie meine Entwicklungsumgebung aussieht. Erst mal besitze ich keinen echten Amiga mehr sondern führe die Programme, die ich für den Amiga schreibe, in einem Emulator aus, nämlich <a href="https://fs-uae.net/">FS-UAE</a>. Damit emuliere ich einen Amiga 4000 mit AmigaOS 3.1 und der <a href="https://classicwb.abime.net/">ClassicWB</a>-Umgebung. Die serielle Schnittstelle, die cwdbg ja auch verwendet, wird dabei von FS-UAE auf einen TCP-Port auf dem Host abgebildet.</p>
+<p>Den Code schreibe ich mit Visual Studio Code auf dem Host (in meinem Fall ein Mac Mini) und übersetze den C- und Assembler-Code mit einem Cross-Compiler bzw. Cross-Assembler. Dafür nutze ich momentan eine sehr alte Version des GCCs (2.95), die letzte Version, die noch das AmigaOS unterstützte.</p>
+<p>Um mir das Testen und Debuggen leichter zu machen habe ich an verschiedenen Stellen Unit Tests verwendet, nämlich für die schon erwähnten Funktionen <code>pack_data()</code> und <code>unpack_data()</code> (mit <a href="https://cmocka.org/">cmocka</a>), für das Einlesen und Verarbeiten der Debug-Informationen und für das Testen des Servers (auch wenn das streng genommen keine Unit Tests sind).</p>
+<h2>Was habe ich bei dem Projekt gelernt?</h2>
+<p>Als allererstes ist mir durch das Projekt klar geworden, wie komplex ein Debugger eigentlich ist und wie knifflig es ist, selber einen zu schreiben. Das sieht man zum einen daran, dass ich wie gesagt mit Unterbrechungen schon seit über vier Jahren an dem Projekt arbeite und zum anderen an dem Umfang des Codes. Selbst cwdbg mit seiner sehr beschränkten Funktionalität besteht mittlerweile aus ca. 4500 Zeilen (Python, C und Assembler). Das ist natürlich noch nichts im Vergleich zu einem professionellen Debugger, beim GDB (in der Version 12.1) sind es sehr beeindruckende 3,3 Millionen Zeilen.</p>
+<p>Darüber hinaus habe beim Schreiben von cwdbg auch noch einiges über C gelernt. Auch wenn C nach BASIC meine zweite Programmiersprache war und ich schon seit Ende der 1980er Jahre immer wieder mal in C programmiert habe, hatte ich doch relativ wenig Erfahrung damit, grössere Programme in C zu schreiben. Und erst bei grösseren Programmen muss man sich ja mehr Gedanken machen wie man den Code strukturiert. So kommt es, dass ich in diesem Projekt zum ersten Mal in C objektorientiert programmiert und <a href="https://de.wikipedia.org/wiki/Opaker_Datentyp">opake Datentypen</a> und Unit Tests verwendet habe. Da das Programm ja auch einigermassen robust sein sollte hat auch die Fehlerbehandlung eine wichtige Rolle gespielt. Da musste ich mich unter anderem damit beschäftigen, wie ich bei Funktionen Fehler anzeige und was an den unterschiedlichen Stellen bei einem Fehler passieren soll. Spezielle Rückgabewerte wie -1 oder NULL verwenden und den Fehlercode in einer globalen Variablen speichern oder den Fehlercode als Rückgabewert und das eigentliche Ergebnis der Funktion als Ausgabe-Parameter zurückgeben? Programm beenden? Fehler loggen? Fehler an den Host melden?</p>
+<p>Ansonsten war und ist cwdbg eine ziemlich spannende Reise durch eine Reihe unterschiedlicher Themen, auf die ich ja schon eingegangen bin. Diese Reise ist sicher noch nicht zu Ende, denn ich habe noch eine Menge Ideen, wie ich cwdbg erweitern und verbessern könnte. Damit bin ich am Ende des Artikels angelangt. Ich hoffe, ich konnte einen Teil der Faszination, die ich bei dem Projekt erlebt habe, weitergeben. Der vollständige Quellcode von cwdbg findet sich auf <a href="https://github.com/wiemerc/cwdbg.git">GitHub</a> und steht unter der BSD-Lizenz.</p>
+<p>Wie immer freue ich mich über Kommentare, Anmerkungen und Fragen und bin unter der Adresse <a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#99;&#111;&#110;&#115;&#116;&#97;&#110;&#116;&#105;&#110;&#46;&#119;&#105;&#101;&#109;&#101;&#114;&#64;&#103;&#109;&#120;&#46;&#100;&#101;">&#99;&#111;&#110;&#115;&#116;&#97;&#110;&#116;&#105;&#110;&#46;&#119;&#105;&#101;&#109;&#101;&#114;&#64;&#103;&#109;&#120;&#46;&#100;&#101;</a> erreichbar.</p>                </article>
             </aside><!-- /#featured -->
                 <section id="content" class="body">
                     <h1>Other articles</h1>
                     <ol id="posts-list" class="hfeed">
+
+            <li><article class="hentry">
+                <header>
+                    <h1><a href="https://wiemerc.github.io/alte-freundin-virtuelle-maschine-fur-amiga-programme.html" rel="bookmark"
+                           title="Permalink to Alte Freundin - Virtuelle Maschine für Amiga-Programme">Alte Freundin - Virtuelle Maschine für Amiga-Programme</a></h1>
+                </header>
+
+                <div class="entry-content">
+<footer class="post-info">
+        <span>Sun 08 November 2020</span>
+
+</footer><!-- /.post-info -->                <p>Irgendwann im Frühjahr 2016 hatte ich die Idee zu einem Projekt, das mir im ersten Moment ziemlich verrückt erschien. Ich könnte doch einen Emulator schreiben, der Programme, die für den Commodore Amiga, den Computer meiner Jugend, entwickelt worden waren, auf einem Mac oder einem Linux-Rechner ausführt. Und dieser Emulator sollte …</p>
+                <a class="readmore" href="https://wiemerc.github.io/alte-freundin-virtuelle-maschine-fur-amiga-programme.html">read more</a>
+                </div><!-- /.entry-content -->
+            </article></li>
 
             <li><article class="hentry">
                 <header>

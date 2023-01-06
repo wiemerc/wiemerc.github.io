@@ -5,35 +5,21 @@ xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 
 <url>
 <loc>https://wiemerc.github.io/</loc>
-<lastmod>2022-01-03T15:45:42-00:00</lastmod>
-<changefreq>daily</changefreq>
-<priority>0.5</priority>
-</url>
-
-<url>
-<loc>https://wiemerc.github.io/archives.html</loc>
-<lastmod>2022-01-03T15:45:42-00:00</lastmod>
-<changefreq>daily</changefreq>
-<priority>0.5</priority>
-</url>
-
-<url>
-<loc>https://wiemerc.github.io/tags.html</loc>
-<lastmod>2022-01-03T15:45:42-00:00</lastmod>
-<changefreq>daily</changefreq>
-<priority>0.5</priority>
-</url>
-
-<url>
-<loc>https://wiemerc.github.io/categories.html</loc>
-<lastmod>2022-01-03T15:45:42-00:00</lastmod>
+<lastmod>2023-01-06T16:19:08-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://wiemerc.github.io/pages/uber-mich.html</loc>
-<lastmod>2021-12-19T15:22:00+01:00</lastmod>
+<lastmod>2023-01-06T17:04:00+01:00</lastmod>
+<changefreq>monthly</changefreq>
+<priority>0.5</priority>
+</url>
+
+<url>
+<loc>https://wiemerc.github.io/wurmloch-remote-debugger-fur-den-commodore-amiga.html</loc>
+<lastmod>2023-01-06T17:02:00+01:00</lastmod>
 <changefreq>monthly</changefreq>
 <priority>0.5</priority>
 </url>
@@ -67,15 +53,15 @@ xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 </url>
 
 <url>
-<loc>https://wiemerc.github.io/category/hacks.html</loc>
-<lastmod>2020-11-08T18:02:00+00:53</lastmod>
+<loc>https://wiemerc.github.io/category/projekte.html</loc>
+<lastmod>2023-01-06T17:02:00+00:53</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://wiemerc.github.io/author/constantin-wiemer.html</loc>
-<lastmod>2020-11-08T18:02:00+00:53</lastmod>
+<lastmod>2023-01-06T17:02:00+00:53</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
