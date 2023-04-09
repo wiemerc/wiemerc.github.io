@@ -12,131 +12,235 @@
 
 <body id="index" class="home">
         <header id="banner" class="body">
-                <h1><a href="https://wiemerc.github.io/">Constantin Wiemer's Blog  <strong><p>Ein Blog über meine Programmierprojekte und vielleicht auch mal über Computergeschichte</strong></a></h1>
+                <h1><a href="https://wiemerc.github.io/">Constantin Wiemer's Blog  <strong><p>A blog about my programming projects, computer security and once in a while maybe also about computer history</strong></a></h1>
                 <nav><ul>
     
                         <li><a href="https://wiemerc.github.io/pages/uber-mich.html">Über mich</a></li>
-                    <li><a href="https://wiemerc.github.io/category/computergeschichte.html">Computergeschichte</a></li>
-                    <li><a href="https://wiemerc.github.io/category/projekte.html">Projekte</a></li>
+                    <li><a href="https://wiemerc.github.io/category/computer-history.html">Computer History</a></li>
+                    <li><a href="https://wiemerc.github.io/category/computer-security.html">Computer Security</a></li>
+                    <li><a href="https://wiemerc.github.io/category/programming-projects.html">Programming Projects</a></li>
                 </ul>
                 </nav>
         </header><!-- /#banner -->
 
             <aside id="featured" class="body">
                 <article>
-                    <h1 class="entry-title"><a href="https://wiemerc.github.io/wurmloch-remote-debugger-fur-den-commodore-amiga.html">Wurmloch - Remote Debugger für den Commodore Amiga</a></h1>
+                    <h1 class="entry-title"><a href="https://wiemerc.github.io/anatomy-of-a-modern-memory-corruption-exploit-part-ii.html">Anatomy of a Modern Memory Corruption Exploit - Part II</a></h1>
 <footer class="post-info">
-        <span>Fri 06 January 2023</span>
+        <span>Sun 09 April 2023</span>
 
-</footer><!-- /.post-info --><p>Ich beschäftige mich ja seit einigen Jahren in meiner Freizeit mit Systemprogrammierung und habe auch schon einige Projekte in dem Bereich gemacht, unter anderem <a href="https://wiemerc.github.io/gastarbeiter-windows-programme-auf-linux-ausfuhren.html">WoL</a> und <a href="https://wiemerc.github.io/alte-freundin-virtuelle-maschine-fur-amiga-programme.html">VADM</a>. Das Projekt, um das es in diesem Artikel geht, hat auch mit Systemprogrammierung zu tun, aber es gibt ein paar Unterschiede zu den früheren Projekten. Aber erst mal, was ist das überhaupt für ein Projekt? Wie der Titel schon sagt geht es um einen Remote Debugger für den Commodore Amiga namens <em>cwdbg</em>. Aber was bedeutet das genau? Ich gehe mal davon aus, dass ihr wisst, was ein Debugger ist. Der Debugger, den ich geschrieben habe, dient zur Fehlersuche von in Assembler oder C geschriebenen Programmen für den Commodore Amiga. Der Amiga, falls ihr das nicht wisst, war ein Heimcomputer der späten 1980er und frühen 1990er Jahre und <em>der</em> Computer meiner Jugend. Spätestens seit VADM sollte klar sein, dass ich mich immer noch gerne mit ihm beschäftige. <em>Remote</em> bedeutet allerdings, dass der Debugger selber nur zu einem kleinen Teil auf dem Amiga läuft und zum grösseren Teil auf einem modernen Rechner unter Linux, macOS oder Windows. Daher auch der Titel dieses Artikels - das Projekt verbindet wie ein Wurmloch verschiedene Zeiten, in dem Fall moderne Technologien mit Retro-Computing.</p>
-<p>Was ist nun bei diesem Projekt so besonders? Bei meinen anderen Projekten handelte es sich immer nur um Proofs of Concept ohne echte Funktionalität. Als ich mit cwdbg begann wollte ich eigentlich nur lernen, wie ein Debugger überhaupt funktioniert und sehen, ob ich einen für den Amiga schreiben könnte. Bei den ersten Versionen handelte es sich demzufolge auch genau um solche Proofs of Concept. Aber nach einer Weile dachte ich mir, dass es schön wäre, auch mal ein Programm zu schreiben, das zumindest halbwegs benutzbar wäre. Das hat natürlich den Umfang deutlich vergrössert und führte dazu, dass ich mittlerweile (mit Unterbrechungen) schon seit über vier Jahren an dem Projekt arbeite. Es ist sicher nicht so, dass der Debugger jetzt wirklich "fertig" wäre. Aber er befindet sich in einem vorzeigbaren Zustand, was ich zum Anlass genommen habe, diesen Artikel zu schreiben. Den Debugger in Aktion erleben kann man in zwei Screencasts, <a href="https://wiemerc.github.io/images/cwdbg/debugging-asm-prog.mp4">einmal</a> beim Debuggen eines Assembler-Programms, <a href="https://wiemerc.github.io/images/cwdbg/debugging-c-prog.mp4">einmal</a> beim Debuggen eines in C geschriebenen Programms.</p>
-<p>In den vier Jahren haben sich immer wieder die Ziele des Projekts geändert. Ursprünglich hatte ich geplant, dass der Debugger komplett auf dem Amiga läuft, eventuell sogar mit einer GUI und einem ARexx-Port. Aber nach einer Weile empfand ich die Programmierung in C doch als relativ mühsam, vor allem im Vergleich zu Python, der Sprache, mit der ich beruflich arbeite. Besonders schreckte mich die Vorstellung ab, das Einlesen und Verarbeiten der Debug-Informationen im STABS-Format nochmal in C schreiben zu müssen, einen Prototypen dafür hatte ich schon in Python geschrieben. So entstand die Idee, den Debugger in einen kleinen, in C und Assembler geschriebenen Server und einen in Python geschriebenen Host aufzuteilen. Der Server würde auf dem Amiga laufen, der Host auf einem anderen Rechner mit Linux, Windows oder macOS als Betriebssystem. Und mit Python als Programmiersprache für den Host wäre es viel einfacher und schneller möglich, Features zu implementieren. Genau so ist cwdbg jetzt aufgebaut.</p>
-<p>Am Anfang des Projekts war das Debuggen auf Quellcode-Ebene das hauptsächliche Ziel. Nach einer Weile kamen dann Features dazu, die eher beim Debuggen von Programmen, deren Quellcode man gar nicht hat, nützlich sind, wie zum Beispiel das Annotieren von Aufrufen von Systemroutinen oder das Disassemblieren von beliebigen Speicherbereichen.</p>
-<p>Eine weiterer Unterschied zu früheren Projekten ist, dass ich den Code mittlerweile schon einige Mal ziemlich grundlegend umstrukturiert habe. Ich stellte einfach beim Entwickeln immer wieder fest, dass die bisherige Struktur für die Weiterentwicklung oder auch die neue Ausrichtung des Projekts (z. B. die Aufteilung in Host und Server) hinderlich war.</p>
-<p>Ich werde in diesem Artikel nicht erklären, wie ein Debugger grundsätzlich funktioniert. Für eine gut lesbare Einführung in das Thema kann ich die Reihe von <a href="https://eli.thegreenplace.net/2011/01/23/how-debuggers-work-part-1/">Artikeln</a> von Eli Bendersky empfehlen, die auch mir sehr geholfen haben. Allerdings geht es in diesen Artikeln um Debugger, die auf Linux (und einem Intel-Prozessor) laufen. Im folgenden werde ich zeigen, wie das Ganze auf dem Amiga funktioniert und welchen speziellen Herausforderungen es dabei gab. Der wesentliche Unterschied ist, dass das AmigaOS keinerlei Unterstützung für Debugger bietet (wie <a href="https://en.wikipedia.org/wiki/Ptrace">ptrace</a> in Linux oder die <a href="https://docs.microsoft.com/en-us/windows/win32/debug/debugging-functions">Debugging API</a> in Windows). Allerdings ist auf dem Amiga aufgrund seiner Architektur auch keine Unterstützung durch das Betriebssystem nötig.</p>
-<h2>Ausführen des Programms</h2>
-<p>Als erstes muss ein Debugger natürlich das Programm, das "entwanzt" werden soll, ausführen können. Damit ist nicht nur das Starten des Programms (wie in einer Shell) gemeint, sondern auch Breakpoints, also das Anhalten des Programms an interessanten Stellen und das schrittweise Ausführen (Zeile für Zeile bzw. Instruktion für Instruktion).</p>
-<p>cwdbg führt das Programm in einem separaten Prozess aus (mit der Systemroutine <code>CreateNewProc</code>) und die beiden Prozesse, der Debugger und das sogenannte Target, kommunizieren über Signale miteinander (wie das auf dem Amiga eben so üblich war).</p>
-<p>Wie in dem zweiten Artikel der Reihe von Eli Bendersky beschrieben werden Breakpoints normalerweise implementiert, indem man an der Stelle im Code, an der man das Programm anhalten möchte, die Maschinensprache-Instruktion durch eine Interrupt- bzw. bei dem Motorola-680x0-Prozessor des Amigas eine Trap-Instruktion ersetzt. Zusätzlich bieten Prozessoren einen Einzelschritt- oder sogenannten Trace-Modus, in dem nach jeder ausgeführten Instruktion ein Interrupt bzw. eine Exception ausgelöst wird. Damit lässt sich ein schrittweises Ausführen des Programms auf Assembler-Ebene implementieren, was ich auch bei cwdbg so gemacht habe.</p>
-<p>Was passiert nun mit diesen Interrupts oder Exceptions? Bei modernen Betriebssystemen wird ein entsprechender Handler im Kernel aufgerufen und das Betriebssystem kümmert sich um die Bearbeitung. Bei Linux bedeutet das, wenn das Programm mit Hilfe von <code>ptrace</code> ausgeführt wird, dass ein Signal an den Eltern-Prozess geschickt wird.</p>
-<p>Auf dem Amiga gibt es, wie schon erwähnt, diesen Komfort nicht. Eine Exception führt normalerweise zu der berüchtigten <em>Guru Meditation</em> mit anschliessendem Neustart des Rechners. Ich musste als für cwdbg einen eigenen Exception Handler schreiben.</p>
-<p>Was macht nun dieser Exception Handler genau? Im Prinzip führt er einen Kontextwechsel durch, und zwar innerhalb eines Prozesses, nämlich des Target-Prozesses. Was bedeutet das genau? Zuerst wird der Prozess-Kontext, das heisst alle Register einschliesslich Program Counter (PC), Stack Pointer (SP) und Status-Register (SR) gesichert und dann wird der Supervisor-Modus, in dem der Exception Handler ausgeführt wird, verlassen und eine Routine des Debuggers aufgerufen. Es findet also ein Kontext-Wechsel von dem vom Debugger ausgeführten Programm zum Debugger selber statt, aber noch innerhalb des Prozesses, der für das ausgeführte Programm erzeugt wurde. Wenn sich die aufgerufene Routine beendet hat wird wieder zum Kontext des ausgeführten Programms gewechselt. Dabei werden die gesicherten Register wiederhergestellt (aus technischen Gründen ebenfalls in dem Exception Handler) und das Programm wird dann fortgesetzt. Weil so ein Exception Handler sehr nahe an der Hardware arbeitet und es dabei auf jede einzelne Instruktion ankommt habe ich ihn in Assembler geschrieben. Bis dahin hatte ich eigentlich keine Erfahrung mit Assembler, schon gar nicht mit dem Assembler für die Motorola-Prozessoren, und daher war der Exception Handler sicher einer der kniffligsten Teile von cwdbg. Hilfreich waren dabei <a href="http://www.mrjester.hapisan.com/04_MC68/">dieses</a> Tutorial und die Funktion <code>kprintf</code> aus der <code>debug.lib</code>, mit der man Ausgaben über die serielle Schnittstelle auch im Supervisor-Modus machen kann.</p>
-<p>Was macht dann diese Routine des Debuggers, die vom Exception Handler aufgerufen wird? Sie sendet ein Signal an den Debugger-Prozess, um ihm mitzuteilen, dass das Target angehalten hat. Anschliessend wartet sie auf ein Signal des Debugger-Prozesses, das der Debugger-Prozess dann schickt wenn der Benutzer das Programm weiter ausführen möchte. Davor kann der Benutzer das Programm untersuchen (sich z. B. Register- oder Speicherinhalte anschauen) und solange wird durch das Warten auf das Signal der Target-Prozess angehalten.</p>
-<p>Das folgende Bild zeigt nochmal den eben beschriebenen Ablauf, das Bild darunter den entsprechenden Ablauf in Linux.</p>
-<!--
-@startuml
-User -> Debugger: Requests breakpoint at address
-Debugger -> Target: Replaces first two bytes of instruction at this address with TRAP
-Debugger -> Target: Starts target in separate process
-Target -> Target: Executes TRAP instruction
-Target -> Target: Exception handler is called
-Target -> Target: Exception handler saves context and calls handle_stopped_target()
-Target -> Debugger: handle_stopped_target() sends signal and waits for reply (blocks target)
-Debugger -> User: Presents target state (next instruction, registers, stack)
-...
-User -> Debugger: Asks to continue target
-Debugger -> Target: Sends signal
-Target -> Target: handle_stopped_target() receives signal and returns to exception handler
-Target -> Target: Exception handler restores context and continues target
-@enduml
--->
-<p><img alt="Programmablauf AmigaOS" src="https://wiemerc.github.io/images/cwdbg/general-flow-amigaos.svg"></p>
-<!--
-@startuml
-User -> Debugger: Requests breakpoint at address
-Debugger -> Target: Replaces first byte of instruction at this address with INT 3 (on Intel x86 processors)
-Debugger -> Target: Starts target in separate process
-Target -> Target: Executes INT 3 instruction
-Target -> Kernel: Interrupt handler is called
-Kernel -> Kernel: Saves target context and suspends target
-Kernel -> Debugger: Sends signal (SIGTRAP)
-Debugger -> User: Presents target state (next instruction, registers, stack)
-...
-User -> Debugger: Asks to continue target
-Debugger -> Kernel: Calls ptrace(), e. g. with PTRACE_CONT
-Kernel -> Target: Restores target context and resumes target
-@enduml
--->
-<p><img alt="Programmablauf Linux" src="https://wiemerc.github.io/images/cwdbg/general-flow-linux.svg"></p>
-<h2>Disassembler</h2>
-<p>Ein wichtiger Bestandteil eines Debuggers ist natürlich ein Disassembler zum Anzeigen der einzelnen Instruktionen des Programms als Assembler-Code (es sein denn man beschränkt sich auf das Debuggen auf Quellcode-Ebene). Das Schreiben eines eigenen Disassemblers erschien mir aber doch zu aufwendig (und auch zu uninteressant), so dass ich mich nach einer fertigen Lösung umsah, die ich nutzen könnte. Fündig wurde ich bei <a href="https://github.com/kstenerud/Musashi">Musashi</a>, einem Emulator für den Motorola-680x0-Prozessor, der auch einen Disassembler beinhaltet. Diesen Code nutzte ich für die ersten Versionen, die noch komplett auf dem Amiga liefen. Nach der Aufteilung in Host und Server nutze ich die Bibliothek <a href="https://www.capstone-engine.org/">Capstone</a> für den Host. Interessanterweise nutzt Capstone aber auch den Disassembler von Musashi für Motorola-680x0-Code.</p>
-<h2>Debug-Informationen</h2>
-<p>Hätte ich mich auf das Debuggen auf Assembler-Ebene beschränkt wäre der Artikel jetzt zu Ende. Aber ich wollte in C geschriebene Programme ja auch auf Quellcode-Ebene mit cwdbg debuggen können, also Breakpoints im Quellcode setzen, das Programm Zeile für Zeile (und nicht nur Instruktion für Instruktion) ausführen und die Werte von Variablen anzeigen. Damit ein Debugger das machen kann braucht er Unterstützung vom Compiler in Form von Debug-Informationen. Diese Debug-Informationen enthalten im Allgemeinen eine Zuordnung von Zeilennummern im Quellcode zu Adressen im Maschinencode, eine Liste aller Funktionen und eine Beschreibung aller Variablen, nämlich welchen Typ und Gültigkeitsbereich sie haben und wo sie gespeichert sind (in welchem Register oder an welcher Speicheradresse).</p>
-<p>Da ich als Compiler den GCC verwende hatte ich zwei Möglichkeiten, was das Format dieser Debug-Informationen angeht - <a href="https://en.wikipedia.org/wiki/Stabs">STABS</a> und <a href="https://en.wikipedia.org/wiki/DWARF">DWARF</a>. DWARF ist zwar das modernere, aber auch deutlich komplexere Format. Und da ich das Einlesen und Verarbeiten der Debug-Informationen selber implementieren und nicht auf eine bestehende Bibliothek zurückgreifen wollte entschied ich mich für STABS. Eine gute Beschreibung dieses Formats findet sich <a href="https://opensource.apple.com/source/gdb/gdb-325/doc/stabs.pdf">hier</a>, zusätzlich habe ich auch ein bisschen im Quellcode der GNU Binutils gespickt.</p>
-<p>Die Debug-Informationen in diesem Format bestehen aus einer Liste von sogenannten <em><strong>S</strong>ymbol <strong>Ta</strong>ble <strong>S</strong>trings</em> (daher der Name des Formats), die die verschiedenen Elemente des Programms wie Funktionen und Variablen beschreiben. Im Prinzip stellen sie einen stark vereinfachten <a href="https://en.wikipedia.org/wiki/Abstract_syntax_tree">abstrakten Syntaxbaum</a> des Programms dar. Und genau so einen Baum baut sich der Debugger beim Einlesen der Debug-Informationen auf. Das war dann übrigens, obwohl das STABS-Format an sich relativ einfach ist, doch nicht ganz trivial zu implementieren. Warum braucht der Debugger überhaupt einen Syntaxbaum? Das liegt daran, dass er auch den Gültigkeitsbereich von Variablen kennen muss, also zum Beispiel welche lokalen Variablen in einer bestimmten Funktion definiert sind. Und der Gültigkeitsbereich einer Variablen ist im STABS-Format dadurch beschrieben, dass erst mal der Gültigkeitsbereich selber definiert wird und dann innerhalb dieses Gültigkeitsbereichs die entsprechenden Variablen, also eben in einer Baumstruktur.</p>
-<p>Aktuell (Dezember 2022) werden die Informationen, die die Typen der Variablen beschreiben, zwar eingelesen aber noch nicht verarbeitet. Damit ist cwdbg momentan noch nicht in der Lage, die Werte von Variablen auszugeben.</p>
-<h2>Remote Debugging über die serielle Schnittstelle</h2>
-<p>Wie schon erwähnt habe ich ja den Debugger nach eine Weile in einen Host und einen Server aufgeteilt. Aber wie sollten Server und Host (das sind übrigens die Begriffe, die auch der GDB verwendet) miteinander kommunizieren? Heutzutage würde so eine Kommunikation natürlich über TCP/IP laufen, und darauf aufsetzend würde man vielleicht eine REST API nutzen oder auch eine Bibliothek wie <a href="https://zeromq.org/">ZeroMQ</a> und die Daten würde man zum Beispiel mit <a href="https://developers.google.com/protocol-buffers">Google Protocol Buffers</a> serialisieren und deserialisieren. Aber zum einen wollte ich dem Geist der 1980er Jahre, aus denen der Amiga stammt, nicht untreu werden. Zum anderen hat es mich auch gereizt, mal ein eigenes Netzwerkprotokoll zu entwickeln.</p>
-<p>Die Entscheidung für die physikalische Schicht war schnell gefallen. Das konnte bei einem Projekt mit Retro-Bezug nur die serielle Schnittstelle sein. Aber die serielle Schnittstelle stellt ja erst mal nur einen Byte-Strom zur Verfügung. Möchte man, wie man das bei Protokollen ja üblicherweise macht, mit Paketen arbeiten, braucht man auf der nächsten Schicht ein sogenanntes <a href="https://en.wikipedia.org/wiki/Frame_(networking)">Framing-Protokoll</a>. Dabei liebäugelte ich kurz mit <a href="https://en.wikipedia.org/wiki/High-Level_Data_Link_Control">HDLC</a>. Das erschien mir dann aber doch zu kompliziert und ich entschied mich für das wesentlich einfachere, aber für meine Zwecke ausreichende <a href="https://en.wikipedia.org/wiki/Serial_Line_Internet_Protocol">SLIP</a>. Das wurde ja in der Anfangszeit des Internets gerne zur Übertragung von IP-Paketen über serielle Schnittstellen genutzt.</p>
-<p>Entgegen dieser ursprünglichen Verwendung nutze ich SLIP in diesem Projekt aber nicht, um IP-Pakete zu transportieren sondern die Pakete meines für den Debugger entwickelten Protokolls. Ich überspringe also sozusagen die Schichten 3 und 4 des OSI-Modells und mein Protokoll implementiert die Schichten 5 bis 7.</p>
-<p>Wie sieht nun dieses Protokoll genau aus? Es handelt sich um ein synchrones, binäres <a href="https://en.wikipedia.org/wiki/Request%E2%80%93response">Request-Response-Protokoll</a>. Das bedeutet, dass der Host eine Anfrage an den Server schickt und auf die Antwort des Servers wartet. Der Server bestätigt die Ausführung der gewünschten Aktion (zum Beispiel das Starten des Programms) oder meldet einen aufgetretenen Fehler. Sowohl Anfrage als auch Antwort können weitere Daten enthalten, zum Beispiel eine Speicheradresse beim Setzen eines Breakpoints oder der Speicherinhalt beim Auslesen eines Speicherbereichs. Zusätzlich meldet sich der Server bei dem Host jedes Mal wenn das Programm angehalten hat (wenn zum Beispiel ein Breakpoint erreicht wurde) und übermittelt ihm dabei den aktuellen Zustand des Programms (Grund des Anhaltens, die nächsten Instruktionen, der Inhalt der Register und der Anfang des Stacks). </p>
-<p><a href="https://stackoverflow.com/questions/1445387/how-do-you-design-a-serial-command-protocol-for-an-embedded-system">Hier</a> findet sich eine ganz interessante Diskussion zum Design eines Protokolls für die serielle Schnittstelle.  Das folgende Bild zeigt den Nachrichtenfluss bei einer typischen Debugging-Sitzung. Der Einfachheit halber fehlen in dem Bild die internen Abläufe im Server.</p>
-<!--
-@startuml
-User -> Host: command 'bpoint 0x...'
-Host -> Server: MSG_SET_BP
-Server -> Host: MSG_ACK
-User -> Host: command 'run'
-Host -> Server: MSG_RUN
-Server -> Host: MSG_ACK
-Server -> Target: runs target
-Target -> Target: target runs until a breakpoint / next instruction is hit
-Target -> Server: handles stopped target
-Server -> Host: MSG_TARGET_STOPPED
-Host -> Server: MSG_ACK
-Host -> User: display target infos and prompt
-User -> Host: command 'continue' / 'step'
-Host -> Server: MSG_CONT / MSG_STEP
-Server -> Host: MSG_ACK
-Server -> Target: continues target
-Target -> Target: target runs until completion
-Target -> Server: handles stopped target
-Server -> Host: MSG_TARGET_STOPPED
-Host -> Server: MSG_ACK
-Host -> User: display target infos and prompt
-@enduml
--->
-<p><img alt="Nachrichtenfluss" src="https://wiemerc.github.io/images/cwdbg/message-flow.svg"></p>
-<p>Eine einzelne Protokollnachricht ist folgendermassen aufgebaut:</p>
-<p><img alt="Aufbau einer Protokollnachricht" src="https://wiemerc.github.io/images/cwdbg/protocol-message.svg"></p>
-<p>Zusätzlich zu dem Typ der Nachricht (<code>MSG_*</code>) und eventuellen Daten gibt es noch eine fortlaufende Sequenznummer und eine Prüfsumme. Mit der Sequenznummer könnten verlorengegangene oder nach einem Timeout wiederholte Nachrichten erkannt werden, mit der Prüfsumme Bitfehler bei der Übertragung. Weder Timeouts noch die Prüfsumme sind momentan (Dezember 2022) implementiert. </p>
-<p>Die Daten selber werden ohne weitere Informationen wie Typ oder Länge der einzelnen Elemente in Netzwerk-Byte-Reihenfolge (Big Endian) übertragen. Das bedeutet, dass der Empfänger immer genau wissen muss, welche Daten er vom Sender bekommt, aber so war die Datenübertragung deutlich einfacher zu implementieren als mit einem Datenformat wie <a href="https://en.wikipedia.org/wiki/ASN.1">ASN.1</a> oder <a href="https://en.wikipedia.org/wiki/External_Data_Representation">XDR</a>. Um das Packen und Entpacken der Daten nicht für jeden Nachrichtentyp separat implementieren zu müssen habe ich mir zwei Funktionen <code>pack_data()</code> und <code>unpack_data()</code> geschrieben, die analog zu den Funktionen <code>pack()</code> und <code>unpack()</code> aus dem Python-Modul <a href="https://docs.python.org/3/library/struct.html"><code>struct</code></a> einen Format-String als Parameter haben, der angibt, welche Typen die einzelnen Datenelemente haben. Anhand dieses Format-Strings werden dann die Datenelemente entsprechend in einen Bytestrom gepackt bzw. aus einem Bytestrom entpackt. Die Idee zu diesen Funktionen habe ich aus dem Buch <em>The Practice of Programming</em> von Brian Kernighan (übrigens ein sehr lesenswertes Buch).</p>
-<h2>UI mit Urwid</h2>
-<p>Nachdem ich mich entschieden hatte, den Debugger in einen Host und einen Server aufzuteilen, stellte sich die Frage, was für eine Benutzerschnittstelle der Host bekommen sollte. Natürlich hätte ein einfaches CLI ausgereicht, das hatte ja auch die ursprüngliche Version, die noch komplett auf dem Amiga lief. Aber irgendwann hatte ich die Idee, den Host mit einer UI auszustatten, die dem Benutzer die wichtigsten Informationen wie Programmstatus, die nächsten Instruktionen bzw den Quellcode des Programms, die Registerinhalte usw. bei jedem Stopp des Programms übersichtlich anzeigen würde. Inspiriert wurde ich dabei von <a href="https://github.com/pwndbg/pwndbg">pwndbg</a>, einer Erweiterung für den GDB. Weil ich mit der UI nur Informationen anzeigen wollte und die Steuerung des Debuggers weiterhin über die Kommandozeile erfolgen sollte entschied ich mich für eine <a href="https://en.wikipedia.org/wiki/Text-based_user_interface">TUI</a>. Das klingt vielleicht erst mal sehr nach den 1980er Jahren (z. B. hatte Turbo Pascal von Borland so eine UI) aber mein Eindruck ist, dass TUIs in den letzten Jahren wieder in Mode gekommen sind.</p>
-<p>Implementiert habe ich die TUI in diesem Projekt mit Hilfe von <a href="https://urwid.org/">Urwid</a>. Urwid ist eine Bibliothek für Python mit der üblichen Funktionalität einer GUI-Bibliothek wie verschiedene Widgets, Geometrie-Management und so weiter, nur eben für die Konsole. Damit ist die Erstellung einer TUI wesentlich einfacher als z. B. direkt mit <a href="https://en.wikipedia.org/wiki/Ncurses">ncurses</a>.</p>
-<h2>Entwicklungsumgebung</h2>
-<p>Für diejenigen, die sich auch für Retro-Computing interessieren, ist vielleicht ganz interessant, wie meine Entwicklungsumgebung aussieht. Erst mal besitze ich keinen echten Amiga mehr sondern führe die Programme, die ich für den Amiga schreibe, in einem Emulator aus, nämlich <a href="https://fs-uae.net/">FS-UAE</a>. Damit emuliere ich einen Amiga 4000 mit AmigaOS 3.1 und der <a href="https://classicwb.abime.net/">ClassicWB</a>-Umgebung. Die serielle Schnittstelle, die cwdbg ja auch verwendet, wird dabei von FS-UAE auf einen TCP-Port auf dem Host abgebildet.</p>
-<p>Den Code schreibe ich mit Visual Studio Code auf dem Host (in meinem Fall ein Mac Mini) und übersetze den C- und Assembler-Code mit einem Cross-Compiler bzw. Cross-Assembler. Dafür nutze ich momentan eine sehr alte Version des GCCs (2.95), die letzte Version, die noch das AmigaOS unterstützte.</p>
-<p>Um mir das Testen und Debuggen leichter zu machen habe ich an verschiedenen Stellen Unit Tests verwendet, nämlich für die schon erwähnten Funktionen <code>pack_data()</code> und <code>unpack_data()</code> (mit <a href="https://cmocka.org/">cmocka</a>), für das Einlesen und Verarbeiten der Debug-Informationen und für das Testen des Servers (auch wenn das streng genommen keine Unit Tests sind).</p>
-<h2>Was habe ich bei dem Projekt gelernt?</h2>
-<p>Als allererstes ist mir durch das Projekt klar geworden, wie komplex ein Debugger eigentlich ist und wie knifflig es ist, selber einen zu schreiben. Das sieht man zum einen daran, dass ich wie gesagt mit Unterbrechungen schon seit über vier Jahren an dem Projekt arbeite und zum anderen an dem Umfang des Codes. Selbst cwdbg mit seiner sehr beschränkten Funktionalität besteht mittlerweile aus ca. 4500 Zeilen (Python, C und Assembler). Das ist natürlich noch nichts im Vergleich zu einem professionellen Debugger, beim GDB (in der Version 12.1) sind es sehr beeindruckende 3,3 Millionen Zeilen.</p>
-<p>Darüber hinaus habe beim Schreiben von cwdbg auch noch einiges über C gelernt. Auch wenn C nach BASIC meine zweite Programmiersprache war und ich schon seit Ende der 1980er Jahre immer wieder mal in C programmiert habe, hatte ich doch relativ wenig Erfahrung damit, grössere Programme in C zu schreiben. Und erst bei grösseren Programmen muss man sich ja mehr Gedanken machen wie man den Code strukturiert. So kommt es, dass ich in diesem Projekt zum ersten Mal in C objektorientiert programmiert und <a href="https://de.wikipedia.org/wiki/Opaker_Datentyp">opake Datentypen</a> und Unit Tests verwendet habe. Da das Programm ja auch einigermassen robust sein sollte hat auch die Fehlerbehandlung eine wichtige Rolle gespielt. Da musste ich mich unter anderem damit beschäftigen, wie ich bei Funktionen Fehler anzeige und was an den unterschiedlichen Stellen bei einem Fehler passieren soll. Spezielle Rückgabewerte wie -1 oder NULL verwenden und den Fehlercode in einer globalen Variablen speichern oder den Fehlercode als Rückgabewert und das eigentliche Ergebnis der Funktion als Ausgabe-Parameter zurückgeben? Programm beenden? Fehler loggen? Fehler an den Host melden?</p>
-<p>Ansonsten war und ist cwdbg eine ziemlich spannende Reise durch eine Reihe unterschiedlicher Themen, auf die ich ja schon eingegangen bin. Diese Reise ist sicher noch nicht zu Ende, denn ich habe noch eine Menge Ideen, wie ich cwdbg erweitern und verbessern könnte. Damit bin ich am Ende des Artikels angelangt. Ich hoffe, ich konnte einen Teil der Faszination, die ich bei dem Projekt erlebt habe, weitergeben. Der vollständige Quellcode von cwdbg findet sich auf <a href="https://github.com/wiemerc/cwdbg.git">GitHub</a> und steht unter der BSD-Lizenz.</p>
-<p>Wie immer freue ich mich über Kommentare, Anmerkungen und Fragen und bin unter der Adresse <a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#99;&#111;&#110;&#115;&#116;&#97;&#110;&#116;&#105;&#110;&#46;&#119;&#105;&#101;&#109;&#101;&#114;&#64;&#103;&#109;&#120;&#46;&#100;&#101;">&#99;&#111;&#110;&#115;&#116;&#97;&#110;&#116;&#105;&#110;&#46;&#119;&#105;&#101;&#109;&#101;&#114;&#64;&#103;&#109;&#120;&#46;&#100;&#101;</a> erreichbar.</p>                </article>
+</footer><!-- /.post-info --><div id="preamble">
+<div class="sectionbody">
+<div class="paragraph">
+<p>This is part two of a series of articles. <a href="https://wiemerc.github.io/anatomy-of-a-modern-memory-corruption-exploit-part-i.html">Here</a> is part one.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_step_2_calling_a_pre_defined_routine_in_the_victim_with_aslr_enabled">Step 2: Calling a pre-defined routine in the victim with ASLR enabled</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>In step 1 in the <a href="https://wiemerc.github.io/anatomy-of-a-modern-memory-corruption-exploit-part-i.html">first</a> article of this series we had disabled ASLR in order to have the buffer for the decoded third chunk at a fixed address. Now we will raise the bar for the exploit by enabling ASLR for data, that is for memory on the stack and heap. We will keep ASLR disabled for code (by preventing GCC from creating a <a href="https://en.wikipedia.org/wiki/Position-independent_code">position-independent executable (PIE)</a> with the <code>-Wl,-no-pie</code> compiler flag), so our routine <code>pwned_destructor</code> still lives at a fixed address.</p>
+</div>
+<div class="paragraph">
+<p>So how can we defeat ASLR? We somehow need to find out the address of the third chunk&#8217;s buffer (because it contains the fake vtable), despite it being a random value now that differs from one invocation of the victim program to the other. We are helped here by the fact that we have a 32-bit program on our hands. As it turns out, with the somewhat limited address space of 32-bit programs (4GB), there are not that many addresses for the kernel to choose from, especially for large memory blocks. The plot below shows the address ranges (start and end addresses of the memory blocks) for different block sizes as obtained by repeated invocations of a program that just calls <code>malloc</code>.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="https://wiemerc.github.io/images/uaf/malloc-address-ranges.svg" alt="malloc address ranges">
+</div>
+<div class="title">Figure 1. Address ranges returned by <code>malloc</code> by allocation size (with 14 random bits for <code>mmap</code>)</div>
+</div>
+<div class="paragraph">
+<p>As you can see, if we allocate large enough blocks (100MB in the figure), <strong>all</strong> address ranges overlap to some extent. This means there is an address range <strong>that is guaranteed to be included</strong> in each and every memory block we allocate. The actual size threshold above which this is the case depends on a kernel parameter (<code>/proc/sys/vm/mmap_rnd_compat_bits</code>), which tells the kernel how many random bits it should use for the <code>mmap</code> system call (<code>mmap</code> is used internally by <code>malloc</code> for large allocations). The default seems to be 8 bits (see <a href="https://lwn.net/Articles/667790/">this</a> article for more details), with this value a memory block of a size of 100MB <strong>always</strong> gets allocated at the same address. To make things more interesting, I cranked up the value to 14 bits. With that value you get the behavior shown in the figure.</p>
+</div>
+<div class="paragraph">
+<p>So how does this knowledge help us with the exploit? We would need a large memory allocation (e. g. 100MB) to happen in the program and our fake vtable to be located at an address that is always included in the allocated memory block. This is actually quite easy to accomplish. In the previous step we put just one copy of the vtable in the third chunk. But we can make the third chunk much larger and put <strong>lots of copies</strong> of the vtable in it. Then we no longer use the start address (which changes) of the buffer for the chunk&#8217;s data but an address somewhere in the middle (which stays the same) of this buffer as pointer to the vtable, or to be more precise, to <strong>one copy</strong> of it. Because the buffer is located on the heap and we sort of "spray" data onto it, this technique is called <a href="https://en.wikipedia.org/wiki/Heap_spraying">heap spraying</a>. However, it is, as described here, only possible with 32-bit programs. Due to their <strong>much</strong> larger address spaces (256 TB), with 64-bit programs it&#8217;s in general not possible to allocate memory blocks large enough to get overlapping address ranges. For them, this technique must be combined with a way to find out the program&#8217;s address space layout (at least partially), but this is beyond the scope of this series of articles. If I made you curious now, you can read more about this <a href="https://googleprojectzero.blogspot.com/2015/06/dude-wheres-my-heap.html">here</a> for example.</p>
+</div>
+<div class="paragraph">
+<p>How a heap spray looks like in reality is shown in the debugger session below. We take a closer look at the first <code>HTTPChunk</code> object (which got overwritten) right before it&#8217;s about to be deleted.</p>
+</div>
+<div class="listingblock">
+<div class="title">Listing 1. Demo of the heap spraying</div>
+<div class="content">
+<pre>Breakpoint 1, main () at ./uaf-overwrite-vtable.cpp:179
+177             delete p_chunk;
+
+pwndbg&gt; x/3dx p_chunk
+0x98a3c40:      0xe9000000      0x78787878      0x78787878  <i class="conum" data-value="1"></i><b>(1)</b>
+pwndbg&gt; x/16dx 0xe9000000
+0xe66a9010:     0x0804a3dd      0x0804a3dd      0x0804a3dd      0x0804a3dd  <i class="conum" data-value="2"></i><b>(2)</b>
+0xe66a9020:     0x0804a3dd      0x0804a3dd      0x0804a3dd      0x0804a3dd
+0xe66a9020:     0x0804a3dd      0x0804a3dd      0x0804a3dd      0x0804a3dd
+0xe66a9020:     0x0804a3dd      0x0804a3dd      0x0804a3dd      0x0804a3dd
+pwndbg&gt; i sym 0x0804a3dd  <i class="conum" data-value="3"></i><b>(3)</b>
+pwned_destructor() in section .text of /home/consti/Programmieren/Exploits/uaf-overwrite-vtable</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>We can see <strong>(1)</strong> that the object&#8217;s pointer to its vtable now points to the address 0xe9000000. If we inspect the memory at this address we see <strong>(2)</strong> that it indeed contains pointers to the <code>pwned_destructor</code> routine <strong>(3)</strong>, which make up the vtable. So where does this magic value 0xe9000000 come from? I found it by running the program a few times and choosing a value that was always included in the buffer for the third chunk (somewhere in the middle of it). It only needs to be aligned on a double-word address, then it&#8217;s bound to hit a vtable.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_step_3_injecting_the_malicious_code_into_the_victim">Step 3: Injecting the malicious code into the victim</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>So far, we haven&#8217;t injected any code (that we would control) into the program but used a routine already contained in the program. As I have mentioned, this is normally not a realistic scenario. So we will now ditch the routine and see how we can inject our own code.</p>
+</div>
+<div class="paragraph">
+<p>First off, the injected code must of course be self-contained and position-independent, that is it must be able to run from any location in memory and must not rely on anything other than system calls. This type of code is usually known as <a href="https://en.wikipedia.org/wiki/Shellcode"><em>shellcode</em></a>. The shellcode we will use looks like this:</p>
+</div>
+<div class="listingblock">
+<div class="title">Listing 2. Our shellcode</div>
+<div class="content">
+<pre class="rouge highlight"><code data-lang="gas">.code32
+jmp     l_data
+l_code:
+mov     ebx, 2      # file descriptor, 2 = stderr
+pop     ecx         # pointer to buffer
+mov     edx, 30     # buffer size
+mov     eax, 4      # system call number, 4 = write
+int     0x80        # invoke system call
+ret
+
+l_data:
+call    l_code      # call to push the string's address onto the stack
+.asciz  "\x1b[31mYou've been pwned!!!\x1b[0m\n"</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The term shellcode is actually a bit misleading here as we don&#8217;t start a shell but just print a string. As you can see, the code is quite simple. First, it performs the <a href="https://marcosvalle.github.io/osce/2018/05/06/JMP-CALL-POP-technique.html"><em>JMP-CALL-POP</em></a> trick to get the address of the string we want to print on the stack, then it invokes the <code>write</code> system call and returns (because it will be called as a method via the vtable). I translated the code into a raw binary (just the code, no headers and other stuff) using GNU <code>as</code> and <code>objdump</code> so that the Python <a href="https://github.com/wiemerc/Exploits/blob/main/exploit-uaf.py">script</a> that performs the exploit can use it.</p>
+</div>
+<div class="paragraph">
+<p>So how are we going to deliver this code to the victim program? We will use another chunk for that. But we need to find again a way to use a fixed start address (that we will put into the vtable), despite the start address of the chunk&#8217;s buffer being random. As you might have guessed, the heap spraying, described in the previous step, comes to the rescue once more. But instead of putting lots of copies of our code into the chunk (as we did with the vtable), we will use a technique known as <a href="https://en.wikipedia.org/wiki/NOP_slide"><em>NOP slide</em></a> (or <em>NOP sled</em>). You might be familiar with this technique if you know a bit about classical stack overflows. What it means is that we will create a large chunk (again 100MB), fill it almost completely with NOP instructions and put our shellcode at the very end of it. Then we will use an address that is guaranteed to be included in the chunk&#8217;s buffer as pointer to our code and put that address in our fake vtable. This address will definitely point to a NOP and when the CPU finally jumps to it, program execution will "slide" down the NOPs until it reaches the shellcode. Note that we don&#8217;t care about null bytes in the shellcode as we don&#8217;t deliver it as string but as base64-encoded data.</p>
+</div>
+<div class="paragraph">
+<p>In the following debugger session we will take a closer look at this fourth chunk containing the code.</p>
+</div>
+<div class="listingblock">
+<div class="title">Listing 3. Demo of the code injection</div>
+<div class="content">
+<pre>Breakpoint 1, main () at ./uaf-overwrite-vtable.cpp:179
+177             delete p_chunk;
+
+pwndbg&gt; x/3dx p_chunk
+0x8effc40:      0xe2000000      0x78787878      0x78787878  <i class="conum" data-value="1"></i><b>(1)</b>
+pwndbg&gt; x/8dx 0xe2000000
+0xe2000000:     0xdbc00000      0xdbc00000      0xdbc00000      0xdbc00000  <i class="conum" data-value="2"></i><b>(2)</b>
+0xe2000010:     0xdbc00000      0xdbc00000      0xdbc00000      0xdbc00000
+pwndbg&gt; x/8bx 0xdbc00000
+0xdbc00000:     0x90    0x90    0x90    0x90    0x90    0x90    0x90    0x90
+pwndbg&gt; x/8i 0xdbc00000
+   0xdbc00000:  nop  <i class="conum" data-value="3"></i><b>(3)</b>
+   0xdbc00001:  nop
+   0xdbc00002:  nop
+   0xdbc00003:  nop
+   0xdbc00004:  nop
+   0xdbc00005:  nop
+   0xdbc00006:  nop
+   0xdbc00007:  nop
+pwndbg&gt; x/12i (0xd9b52010 + 0x6400000 - 60)
+   0xdff51fd4:  nop
+   0xdff51fd5:  nop
+   0xdff51fd6:  nop
+   0xdff51fd7:  jmp    0xdff51fec  <i class="conum" data-value="4"></i><b>(4)</b>
+   0xdff51fd9:  mov    ebx,0x1
+   0xdff51fde:  pop    ecx
+   0xdff51fdf:  mov    edx,0x1e
+   0xdff51fe4:  mov    eax,0x4
+   0xdff51fe9:  int    0x80
+   0xdff51feb:  ret
+   0xdff51fec:  call   0xdff51fd9
+   0xdff51ff1:  sbb    ebx,DWORD PTR [ebx+0x33]
+pwndbg&gt; x/1s 0xdff51ff1
+0xdff51ff1:     "\033[31mYou've been pwned!!!\033[0m\n"  <i class="conum" data-value="5"></i><b>(5)</b></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>But before we do that we note that our overwritten object still contains a pointer to the chunk containing our fake vtables <strong>(1)</strong>, although with a different value than before (0xe2000000 instead of 0xe9000000). And of course the vtable looks different now as well. It contains pointers with the value 0xdbc00000 <strong>(2)</strong>. So what is there at this address? If we display the memory as instruction <strong>(3)</strong> we see lots of NOPs. So it seems the address is somewhere located in the buffer for the decoded fourth chunk, in the NOP slide. If we examine the end of this buffer (0xd9b52010 is the start address of the buffer, conveniently printed out by the program) we find our shellcode <strong>(4)</strong> together with the string it prints <strong>(5)</strong>.</p>
+</div>
+<div class="paragraph">
+<p>I arrived at these two addresses (0xe2000000 and 0xdbc00000) again by running the program a few times and choosing values that were always included in the respective buffers. Interestingly, the buffer for the fourth chunk was always located 100MB below the buffer for the third chunk. The following diagram shows the locations of the chunk&#8217;s buffers in memory and their relation (what points to what).</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="https://wiemerc.github.io/images/uaf/chunk-buffers.svg" alt="chunk buffers">
+</div>
+<div class="title">Figure 2. Location of the chunk buffers in memory and their relation</div>
+</div>
+<div class="paragraph">
+<p>So when the destructor is finally called on the overwritten object, via the pointer in the vtable, the CPU will jump right into the NOP slide, execute all the NOPs until it reaches the shellcode and then the shellcode itself.</p>
+</div>
+<div class="paragraph">
+<p>Except&#8230;&#8203; it doesn&#8217;t, not yet at least. Instead, the program terminates with a segmentation fault. Why is that? Another security measure employed by modern CPUs and operating systems keeps us from succeeding. It is commonly known as <a href="https://en.wikipedia.org/wiki/Executable_space_protection#Windows"><em>data execution prevention (DEP)</em></a> or <a href="https://en.wikipedia.org/wiki/W%5EX"><em>W^X</em></a> and means that any memory regions that are writeable by a program (on the heap or stack) are by default not executable (implemented via the <a href="https://en.wikipedia.org/wiki/NX_bit"><em>NX bit</em></a>). As the chunk&#8217;s buffer is of course writeable, the CPU will not execute the code in it but generate an exception which leads in turn to the segmentation fault.</p>
+</div>
+<div class="paragraph">
+<p>So how can we get around this security measure? In the third part of this series I will show you a very clever technique that works by not injecting code into the program but something else. But for now, we will just play a bit unfair and change the permissions of the chunk&#8217;s buffer. This can be done very easily in the debugger as you can see below.</p>
+</div>
+<div class="listingblock">
+<div class="title">Listing 4. Changing the permissions of the chunk&#8217;s buffer</div>
+<div class="content">
+<pre>pwndbg&gt; vmmap 0xd9b52010  <i class="conum" data-value="1"></i><b>(1)</b>
+     Start        End Perm     Size Offset File
+0xd9b52000 0xf6e00000 rw-p 1d2ae000      0 [anon_d9b52] +0x0
+pwndbg&gt; call (long) mprotect(0xd9b52000, 0x1d2ae000, 0x7)  <i class="conum" data-value="2"></i><b>(2)</b>
+$4 = 0</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>First I use the <code>vmmap</code> command (provided by the <a href="https://github.com/pwndbg/pwndbg"><em>pwndbg</em></a> extension) to check the permissions of the buffer <strong>(1)</strong> and you can see that it&#8217;s indeed not executable (it misses the "x" bit). Then I call the <code>mprotect</code> system call <strong>(2)</strong> to change the permissions (I don&#8217;t use the start address and size of the buffer but of the complete memory mapping, 0x7 means "rwx"). After that the exploit actually works.</p>
+</div>
+<div class="paragraph">
+<p>This is the end of the second article in this series. As I already said we will defeat W^X in the third article. Stay tuned if you liked it so far&#8230;&#8203;</p>
+</div>
+</div>
+</div>                </article>
             </aside><!-- /#featured -->
                 <section id="content" class="body">
                     <h1>Other articles</h1>
                     <ol id="posts-list" class="hfeed">
+
+            <li><article class="hentry">
+                <header>
+                    <h1><a href="https://wiemerc.github.io/anatomy-of-a-modern-memory-corruption-exploit-part-i.html" rel="bookmark"
+                           title="Permalink to Anatomy of a Modern Memory Corruption Exploit - Part I">Anatomy of a Modern Memory Corruption Exploit - Part I</a></h1>
+                </header>
+
+                <div class="entry-content">
+<footer class="post-info">
+        <span>Mon 27 March 2023</span>
+
+</footer><!-- /.post-info -->                <div id="preamble">
+<div class="sectionbody">
+<div class="paragraph">
+<p>This is part one of a series of articles. <a href="https://wiemerc.github.io/anatomy-of-a-modern-memory-corruption-exploit-part-ii.html">Here</a> is part two.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_introduction">Introduction</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>I think my interest in computer security was initially sparked in the 1990s by movies like <em>Sneakers</em> and <em>The Net</em> and then by the book <em>Practical Unix and Internet Security</em>. Since then I have dabbled in …</p></div></div></div>
+                <a class="readmore" href="https://wiemerc.github.io/anatomy-of-a-modern-memory-corruption-exploit-part-i.html">read more</a>
+                </div><!-- /.entry-content -->
+            </article></li>
+
+            <li><article class="hentry">
+                <header>
+                    <h1><a href="https://wiemerc.github.io/wurmloch-remote-debugger-fur-den-commodore-amiga.html" rel="bookmark"
+                           title="Permalink to Wurmloch - Remote Debugger für den Commodore Amiga">Wurmloch - Remote Debugger für den Commodore Amiga</a></h1>
+                </header>
+
+                <div class="entry-content">
+<footer class="post-info">
+        <span>Fri 06 January 2023</span>
+
+</footer><!-- /.post-info -->                <p>Ich beschäftige mich ja seit einigen Jahren in meiner Freizeit mit Systemprogrammierung und habe auch schon einige Projekte in dem Bereich gemacht, unter anderem <a href="https://wiemerc.github.io/gastarbeiter-windows-programme-auf-linux-ausfuhren.html">WoL</a> und <a href="https://wiemerc.github.io/alte-freundin-virtuelle-maschine-fur-amiga-programme.html">VADM</a>. Das Projekt, um das es in diesem Artikel geht, hat auch mit Systemprogrammierung zu tun, aber es gibt ein paar Unterschiede zu den …</p>
+                <a class="readmore" href="https://wiemerc.github.io/wurmloch-remote-debugger-fur-den-commodore-amiga.html">read more</a>
+                </div><!-- /.entry-content -->
+            </article></li>
 
             <li><article class="hentry">
                 <header>

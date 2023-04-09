@@ -5,7 +5,7 @@ xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 
 <url>
 <loc>https://wiemerc.github.io/</loc>
-<lastmod>2023-01-06T16:19:08-00:00</lastmod>
+<lastmod>2023-04-09T17:17:50-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
@@ -13,6 +13,20 @@ xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 <url>
 <loc>https://wiemerc.github.io/pages/uber-mich.html</loc>
 <lastmod>2023-01-06T17:04:00+01:00</lastmod>
+<changefreq>monthly</changefreq>
+<priority>0.5</priority>
+</url>
+
+<url>
+<loc>https://wiemerc.github.io/anatomy-of-a-modern-memory-corruption-exploit-part-ii.html</loc>
+<lastmod>2023-04-09T13:00:00+02:00</lastmod>
+<changefreq>monthly</changefreq>
+<priority>0.5</priority>
+</url>
+
+<url>
+<loc>https://wiemerc.github.io/anatomy-of-a-modern-memory-corruption-exploit-part-i.html</loc>
+<lastmod>2023-03-27T13:38:00+02:00</lastmod>
 <changefreq>monthly</changefreq>
 <priority>0.5</priority>
 </url>
@@ -46,14 +60,21 @@ xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 </url>
 
 <url>
-<loc>https://wiemerc.github.io/category/computergeschichte.html</loc>
+<loc>https://wiemerc.github.io/category/computer-history.html</loc>
 <lastmod>2019-09-07T15:13:00+00:53</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
-<loc>https://wiemerc.github.io/category/projekte.html</loc>
+<loc>https://wiemerc.github.io/category/computer-security.html</loc>
+<lastmod>2023-04-09T13:00:00+00:53</lastmod>
+<changefreq>daily</changefreq>
+<priority>0.5</priority>
+</url>
+
+<url>
+<loc>https://wiemerc.github.io/category/programming-projects.html</loc>
 <lastmod>2023-01-06T17:02:00+00:53</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
@@ -61,7 +82,7 @@ xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 
 <url>
 <loc>https://wiemerc.github.io/author/constantin-wiemer.html</loc>
-<lastmod>2023-01-06T17:02:00+00:53</lastmod>
+<lastmod>2023-04-09T13:00:00+00:53</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
