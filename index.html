@@ -20,6 +20,7 @@
                         <li><a href="https://wiemerc.github.io/pages/about-me.html">About me</a></li>
                     <li><a href="https://wiemerc.github.io/category/computer-history.html">Computer History</a></li>
                     <li><a href="https://wiemerc.github.io/category/computer-security.html">Computer Security</a></li>
+                    <li><a href="https://wiemerc.github.io/category/debugging.html">Debugging</a></li>
                     <li><a href="https://wiemerc.github.io/category/programming-projects.html">Programming Projects</a></li>
                 </ul>
                 </nav>
@@ -27,11 +28,148 @@
 
             <aside id="featured" class="body">
                 <article>
-                    <h1 class="entry-title"><a href="https://wiemerc.github.io/anatomy-of-a-modern-memory-corruption-exploit-part-ii.html">Anatomy of a Modern Memory Corruption Exploit - Part II</a></h1>
+                    <h1 class="entry-title"><a href="https://wiemerc.github.io/packet-where-are-you-dns-service-discovery-for-kerberos-failed-because-of-wrong-mtu-size-in-kubernetes-cluster.html">Packet, Where Are You: DNS Service Discovery for Kerberos Failed Because of Wrong MTU Size in Kubernetes Cluster</a></h1>
+<footer class="post-info">
+        <span>Tue 03 October 2023</span>
+
+</footer><!-- /.post-info --><div class="sect1">
+<h2 id="_the_problem">The problem</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Recently I had a very tricky network problem at work that involved Kerberos, DNS and Kubernetes. This article is a writeup of the analysis and the measures we took to solve the issue.</p>
+</div>
+<div class="paragraph">
+<p>In my team at work we&#8217;re running most of our applications in Kubernetes clusters on AWS (the EKS service). One of our applications uses Kerberos authentication against our corporate Active Directory. As we didn&#8217;t want to statically configure any KDCs (<a href="https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-2000-server/cc961976(v=technet.10)?redirectedfrom=MSDN#key-distribution"><em>Key Distribution Center</em></a>, basically a part of the Kerberos server) for the <a href="https://web.mit.edu/kerberos/kfw-4.1/kfw-4.1/kfw-4.1-help/html/kerberos_terminology.htm">realms</a>, Kerberos uses <a href="https://datatracker.ietf.org/doc/html/rfc6763"><em>DNS service discovery</em></a> to find the KDCs. This means it uses the service name <code>_kerberos._tcp.REALM.EXAMPLE.COM</code> to dynamically get a list of KDCs for a specific realm from the DNS server(s).</p>
+</div>
+<div class="paragraph">
+<p>The problem first manifested itself in our application being unable to access a certain web service that is protected by Kerberos authentication. The error message (returned by the <a href="https://datatracker.ietf.org/doc/html/rfc2743"><em>GSSAPI</em></a> that our application uses) was "Cannot find KDC for requested realm". This hinted at a problem with the DNS service discovery described before. However, the application could access other web services that also use Kerberos for authentication, so Kerberos and DNS seemed to work in general. But then we remembered that our company uses two Kerberos realms (for whatever reason) and we saw that the failing web service belonged to one realm while the working ones belonged to the other. To confirm that DNS service discovery was indeed the problem, we ran <code>dig</code> commands like <code>dig +noall +answer SRV _kerberos._tcp.REALM.EXAMPLE.COM</code> in a container in the Kubernetes cluster for both realms, and as we had expected, <code>dig</code> could resolve one realm but not the other. We first suspected of course that there might by a problem on the server side, that is with the Active Directory or the DNS server. But then we ran the same <code>dig</code> commands on a machine outside of the cluster and, to our surprise, <code>dig</code> could resolve both realms. This meant that the problem had to be somehow related to Kubernetes, but left us quite puzzled.</p>
+</div>
+<div class="paragraph">
+<p>To get an idea what was really going on, I ran <code>tcpdump</code> on the cluster nodes. This showed three interesting things, which can be seen in the screenshot below. <sup class="footnote">[<a id="_footnoteref_1" class="footnote" href="#_footnotedef_1" title="View footnote.">1</a>]</sup></p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="https://wiemerc.github.io/images/dns-sd/network-trace-dns-server.png" alt="Network trace showing the DNS request and answer and the ICMP message" width="1100" height="655">
+</div>
+<div class="title">Figure 1. Network trace showing the DNS request and answer and the ICMP <em>Destination Unreachable (Fragmentation needed)</em> message (Cluster node = 10.1.79.36, DNS server 10.1.70.201, pod = 192.168.168.115)</div>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>The DNS server uses UDP (and not TCP) and its answers are each sent in one UDP datagram and therefore also in one IP packet. These IP packets have the <em>Don&#8217;t fragment</em> flag set.</p>
+</li>
+<li>
+<p>The size of the answer to the query for the second realm (2318 octets) exceeds the MTU size that was configured on all network interfaces in the cluster (1500 octets, the typical size for Ethernet).</p>
+</li>
+<li>
+<p>ICMP <em>Destination Unreachable (Fragmentation needed)</em> messages are sent from the cluster nodes to the DNS server.</p>
+</li>
+</ol>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_the_solution">The solution</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>So it seemed pretty clear what the root cause of the problem was and how we could fix it: We just needed to increase the MTU size of the network interfaces in the cluster. But how do you do that? There is a <a href="https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/">DaemonSet</a> <em>aws-node</em> running on each EKS cluster that is part of the <a href="https://aws.github.io/aws-eks-best-practices/networking/vpc-cni/">AWS VPC CNI</a>. It&#8217;s responsible for managing the <a href="https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-eni.html"><em>Elastic Network Interfaces</em></a> (ENI) on the cluster nodes and for assigning IP addresses to pods. As it turns out, this DaemonSet has an environment variable <em>AWS_VPC_ENI_MTU</em> to configure the MTU size to use for the ENIs. So it seemed we could just set this variable to a higher value, like 9001 octets (the default value for Ethernet jumbo frames). And this is what we ended up doing eventually. But as the clusters are managed by another group in our company, it took us a while to get this variable changed permanently. Therefore we had to implement a workaround first.</p>
+</div>
+<div class="paragraph">
+<p>For this workaround one of my colleagues was really helpful. He pointed out that we wouldn&#8217;t run into the problem if we used TCP instead of UDP for the DNS service discovery (as the network stack of the OS partitions the data to be sent into TCP segments that each fit into one IP packet, so the DNS server&#8217;s answer that was larger than the MTU of the network interface would be split into two TCP segments). I hadn&#8217;t thought of this before but when I tried it using <code>dig</code> 's <code>+tcp</code> option it of course worked. Unfortunately for use, we couldn&#8217;t force the Kerberos client (or the resolver of the OS or <em>CoreDNS</em> or any other component that is involved in DNS) to use TCP. <sup class="footnote">[<a id="_footnoteref_2" class="footnote" href="#_footnotedef_2" title="View footnote.">2</a>]</sup>. But then my colleague had another good idea: Could we run <code>dig</code> with the <code>+tcp</code> option somewhere in the cluster periodically to resolve the second realm, so that the answer would already be in the cache when the Kerberos client comes along and tries to resolve it? We tried it out and it actually worked, <sup class="footnote">[<a id="_footnoteref_3" class="footnote" href="#_footnotedef_3" title="View footnote.">3</a>]</sup> so we implemented it with a sidecar container in our application&#8217;s pod.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_a_more_detailed_analysis">A more detailed analysis</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Although we had a workaround and a final solution, I was still not completely satisfied. I wondered which Kubernetes component was actually dropping the DNS server&#8217;s answers and sending the ICMP messages and soon realized that I had no idea how the networking in Kubernetes actually works. Luckily I found an excellent <a href="https://sookocheff.com/post/kubernetes/understanding-kubernetes-networking-model/">guide</a> on the internet. Through this guide I learned that Kubernetes uses standard network components of the Linux kernel like physical interfaces, <a href="https://man7.org/linux/man-pages/man4/veth.4.html">virtual Ethernet devices</a>  (e. g. the ENIs mentioned above) and <a href="https://wiki.archlinux.org/title/network_bridge">bridges</a>. So it seemed to me that the kernel itself had to be responsible for the things we had observed.</p>
+</div>
+<div class="paragraph">
+<p>Then I thought it would be really cool to actually be able to see the path an IP packet, in this case the DNS server&#8217;s answer, takes through the Linux kernel, from the network interface it arrives at to the process that, well, processes it. And lo and behold, after some googling I found that a tool exists to do that: <code>pwru</code>, which stands for <a href="https://github.com/cilium/pwru"><em>Packet, where are you?</em></a>. What it does is it uses <a href="https://en.wikipedia.org/wiki/EBPF"><em>eBPF</em></a> to instrument the kernel&#8217;s network stack and traces the way a certain packet (matching criteria like IP address, source / destination port and so on) takes through the kernel. The output you get is a list of kernel functions that were called when this packet was processed. Of course, to really make sense of the output, you should be at least somewhat familiar with the internals of the kernel&#8217;s network stack. I am certainly not, but I thought that maybe the names of the kernel functions would give a hint anyway, so I decided to give the tool a spin and try to analyze our problem with it.</p>
+</div>
+<div class="paragraph">
+<p>I ran it twice on the cluster node that hosted the pod / container which I ran the <code>dig</code> command in and filtered out the packet that contained the DNS server&#8217;s answer. The first run was with an MTU size of 1500, so the packet was dropped. Then I increased the MTU size to 9001, which means that the packet made it back to <code>dig</code>. The two listings below show the (edited) output of <code>pwru</code> (the exact command was <code>pwru --all-kmods --output-meta 'udp and src port 9053'</code>).</p>
+</div>
+<div class="listingblock">
+<div class="title">Listing 1. Output of <code>pwru</code> (edited), MTU = 1500 octets in the cluster</div>
+<div class="content">
+<pre>...
+              ip_forward netns=4026531992 mark=0x0 ifindex=5 proto=8 mtu=1500 len=2379
+             __icmp_send netns=4026531992 mark=0x0 ifindex=5 proto=8 mtu=1500 len=2379
+...</pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">Listing 2. Output of <code>pwru</code> (edited), MTU = 9001 octets in the cluster</div>
+<div class="content">
+<pre>...
+              ip_forward netns=4026531992 mark=0x0 ifindex=3 proto=8 mtu=9001 len=2379
+...
+               ip_output netns=4026531992 mark=0x0 ifindex=3 proto=8 mtu=9001 len=2379
+...
+                netif_rx netns=4026533409 mark=0x0 ifindex=3 proto=8 mtu=9001 len=2379
+...
+                  ip_rcv netns=4026533409 mark=0x0 ifindex=3 proto=8 mtu=9001 len=2379
+...
+                 udp_rcv netns=4026533409 mark=0x0 ifindex=3 proto=8 mtu=9001 len=2359
+...
+         skb_consume_udp netns=0 mark=0x0 ifindex=0 proto=8 mtu=0 len=2351</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>In both cases the trace started with the same 22 kernel functions, of which I show only the last in the listings, <code>ip_forward</code>. After this function the traces looked very different, so it seemed to me that it might be the one worth looking at in more detail. As I said before, I am by no means familiar with the network stack of Linux, but when I looked at the <a href="https://elixir.bootlin.com/linux/v6.5/source/net/ipv4/ip_forward.c#L86">source code</a> of this function I found that I could follow it quite easily nonetheless. In line <a href="https://elixir.bootlin.com/linux/v6.5/source/net/ipv4/ip_forward.c#L136">136</a> the size of the packet that is about to be forwarded is checked against the MTU of the route for this packet (the function <code>ip_exceeds_mtu</code>). If the packet is larger than the MTU the exact same ICMP message that I saw in the network trace (<em>Destination Unreachable (Fragmentation needed)</em>) is sent (by the function <code>icmp_send</code>) and the packet is dropped. So <code>pwru</code> helped me locate the source of our problem down to a single line in the kernel code, which I think is really cool :-) <sup class="footnote">[<a id="_footnoteref_4" class="footnote" href="#_footnotedef_4" title="View footnote.">4</a>]</sup></p>
+</div>
+<div class="paragraph">
+<p>In the trace for the second case (MTU set to 9001 octets) <code>ip_forward</code> was followed by a lot more functions, of which in the listing I only show a few that I thought indicate that the packet was actually delivered to <code>dig</code>. But I didn&#8217;t investigate this case further, so I&#8217;m not going to go into any details here.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_conclusion">Conclusion</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Although I was annoyed at first because we had to debug just another problem with Kubernetes (my team is in the process of migrating some applications from dedicated servers to Kubernetes and this is not the first problem we had), in the end I really enjoyed it and of course learned a lot. First of all, this problem reminded me that issues at the application level can be caused by things deep down in the network. I think I&#8217;ve not even thought about MTU size in years, let alone configured it. I wouldn&#8217;t have imagined that such a low-level thing could cause Kerberos authentication to fail.</p>
+</div>
+<div class="paragraph">
+<p>Then this problem was a good opportunity to learn more about Kubernetes networking which I had had basically not clue about before. Finally I added a new tool to my toolbox: <code>pwru</code>. I think it might be useful in the future, as I tend to be the guy at work who gets called when the network is causing trouble.</p>
+</div>
+<div class="paragraph">
+<p>I hope you liked this article. Fee free to reach out to me if you have questions or comments.</p>
+</div>
+</div>
+</div>
+<div id="footnotes">
+<hr>
+<div class="footnote" id="_footnotedef_1">
+<a href="#_footnoteref_1">1</a>. To tell the truth, the screenshot doesn&#8217;t show the network trace from one of the cluster nodes. Instead it&#8217;s a trace taken on a machine outside of the cluster, running a simple home-grown DNS server (that I already had written for another project, in Python using <a href="https://scapy.net/"><em>Scapy</em></a>), which I used to reproduce the problem more easily. For some reason unknown to me, on the cluster node I only saw the ICMP messages but not the DNS requests and answers.
+</div>
+<div class="footnote" id="_footnotedef_2">
+<a href="#_footnoteref_2">2</a>. Actually, there might have been a way, but we didn&#8217;t pursue this option further.
+</div>
+<div class="footnote" id="_footnotedef_3">
+<a href="#_footnoteref_3">3</a>. In reality it doesn&#8217;t work 100% of the time because there is a race condition. The cached answer (I assume it&#8217;s CoreDNS that does the caching but I haven&#8217;t really verified) has an associated TTL (30 seconds in our case) and it can happen that the Kerberos client tries to resolve the realm after the answer has expired in the cache but before the next periodic run of <code>dig</code> (every 10 seconds). But we deemed this solution good enough as a workaround.
+</div>
+<div class="footnote" id="_footnotedef_4">
+<a href="#_footnoteref_4">4</a>. Of course this is not a bug in the kernel but a result of the packet being too big and / or the MTU size to small, but I think you know what I mean.
+</div>
+</div>                </article>
+            </aside><!-- /#featured -->
+                <section id="content" class="body">
+                    <h1>Other articles</h1>
+                    <ol id="posts-list" class="hfeed">
+
+            <li><article class="hentry">
+                <header>
+                    <h1><a href="https://wiemerc.github.io/anatomy-of-a-modern-memory-corruption-exploit-part-ii.html" rel="bookmark"
+                           title="Permalink to Anatomy of a Modern Memory Corruption Exploit - Part II">Anatomy of a Modern Memory Corruption Exploit - Part II</a></h1>
+                </header>
+
+                <div class="entry-content">
 <footer class="post-info">
         <span>Sun 09 April 2023</span>
 
-</footer><!-- /.post-info --><div id="preamble">
+</footer><!-- /.post-info -->                <div id="preamble">
 <div class="sectionbody">
 <div class="paragraph">
 <p>This is part two of a series of articles. <a href="https://wiemerc.github.io/anatomy-of-a-modern-memory-corruption-exploit-part-i.html">Here</a> is part one.</p>
@@ -42,166 +180,10 @@
 <h2 id="_step_2_calling_a_pre_defined_routine_in_the_victim_with_aslr_enabled">Step 2: Calling a pre-defined routine in the victim with ASLR enabled</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>In step 1 in the <a href="https://wiemerc.github.io/anatomy-of-a-modern-memory-corruption-exploit-part-i.html">first</a> article of this series we had disabled ASLR in order to have the buffer for the decoded third chunk at a fixed address. Now we will raise the bar for the exploit by enabling ASLR for data, that is for memory on the stack and heap. We will keep ASLR disabled for code (by preventing GCC from creating a <a href="https://en.wikipedia.org/wiki/Position-independent_code">position-independent executable (PIE)</a> with the <code>-Wl,-no-pie</code> compiler flag), so our routine <code>pwned_destructor</code> still lives at a fixed address.</p>
-</div>
-<div class="paragraph">
-<p>So how can we defeat ASLR? We somehow need to find out the address of the third chunk&#8217;s buffer (because it contains the fake vtable), despite it being a random value now that differs from one invocation of the victim program to the other. We are helped here by the fact that we have a 32-bit program on our hands. As it turns out, with the somewhat limited address space of 32-bit programs (4GB), there are not that many addresses for the kernel to choose from, especially for large memory blocks. The plot below shows the address ranges (start and end addresses of the memory blocks) for different block sizes as obtained by repeated invocations of a program that just calls <code>malloc</code>.</p>
-</div>
-<div class="imageblock">
-<div class="content">
-<img src="https://wiemerc.github.io/images/uaf/malloc-address-ranges.svg" alt="malloc address ranges">
-</div>
-<div class="title">Figure 1. Address ranges returned by <code>malloc</code> by allocation size (with 14 random bits for <code>mmap</code>)</div>
-</div>
-<div class="paragraph">
-<p>As you can see, if we allocate large enough blocks (100MB in the figure), <strong>all</strong> address ranges overlap to some extent. This means there is an address range <strong>that is guaranteed to be included</strong> in each and every memory block we allocate. The actual size threshold above which this is the case depends on a kernel parameter (<code>/proc/sys/vm/mmap_rnd_compat_bits</code>), which tells the kernel how many random bits it should use for the <code>mmap</code> system call (<code>mmap</code> is used internally by <code>malloc</code> for large allocations). The default seems to be 8 bits (see <a href="https://lwn.net/Articles/667790/">this</a> article for more details), with this value a memory block of a size of 100MB <strong>always</strong> gets allocated at the same address. To make things more interesting, I cranked up the value to 14 bits. With that value you get the behavior shown in the figure.</p>
-</div>
-<div class="paragraph">
-<p>So how does this knowledge help us with the exploit? We would need a large memory allocation (e. g. 100MB) to happen in the program and our fake vtable to be located at an address that is always included in the allocated memory block. This is actually quite easy to accomplish. In the previous step we put just one copy of the vtable in the third chunk. But we can make the third chunk much larger and put <strong>lots of copies</strong> of the vtable in it. Then we no longer use the start address (which changes) of the buffer for the chunk&#8217;s data but an address somewhere in the middle (which stays the same) of this buffer as pointer to the vtable, or to be more precise, to <strong>one copy</strong> of it. Because the buffer is located on the heap and we sort of "spray" data onto it, this technique is called <a href="https://en.wikipedia.org/wiki/Heap_spraying">heap spraying</a>. However, it is, as described here, only possible with 32-bit programs. Due to their <strong>much</strong> larger address spaces (256 TB), with 64-bit programs it&#8217;s in general not possible to allocate memory blocks large enough to get overlapping address ranges. For them, this technique must be combined with a way to find out the program&#8217;s address space layout (at least partially), but this is beyond the scope of this series of articles. If I made you curious now, you can read more about this <a href="https://googleprojectzero.blogspot.com/2015/06/dude-wheres-my-heap.html">here</a> for example.</p>
-</div>
-<div class="paragraph">
-<p>How a heap spray looks like in reality is shown in the debugger session below. We take a closer look at the first <code>HTTPChunk</code> object (which got overwritten) right before it&#8217;s about to be deleted.</p>
-</div>
-<div class="listingblock">
-<div class="title">Listing 1. Demo of the heap spraying</div>
-<div class="content">
-<pre>Breakpoint 1, main () at ./uaf-overwrite-vtable.cpp:179
-177             delete p_chunk;
-
-pwndbg&gt; x/3dx p_chunk
-0x98a3c40:      0xe9000000      0x78787878      0x78787878  <i class="conum" data-value="1"></i><b>(1)</b>
-pwndbg&gt; x/16dx 0xe9000000
-0xe66a9010:     0x0804a3dd      0x0804a3dd      0x0804a3dd      0x0804a3dd  <i class="conum" data-value="2"></i><b>(2)</b>
-0xe66a9020:     0x0804a3dd      0x0804a3dd      0x0804a3dd      0x0804a3dd
-0xe66a9020:     0x0804a3dd      0x0804a3dd      0x0804a3dd      0x0804a3dd
-0xe66a9020:     0x0804a3dd      0x0804a3dd      0x0804a3dd      0x0804a3dd
-pwndbg&gt; i sym 0x0804a3dd  <i class="conum" data-value="3"></i><b>(3)</b>
-pwned_destructor() in section .text of /home/consti/Programmieren/Exploits/uaf-overwrite-vtable</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>We can see <strong>(1)</strong> that the object&#8217;s pointer to its vtable now points to the address 0xe9000000. If we inspect the memory at this address we see <strong>(2)</strong> that it indeed contains pointers to the <code>pwned_destructor</code> routine <strong>(3)</strong>, which make up the vtable. So where does this magic value 0xe9000000 come from? I found it by running the program a few times and choosing a value that was always included in the buffer for the third chunk (somewhere in the middle of it). It only needs to be aligned on a double-word address, then it&#8217;s bound to hit a vtable.</p>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="_step_3_injecting_the_malicious_code_into_the_victim">Step 3: Injecting the malicious code into the victim</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>So far, we haven&#8217;t injected any code (that we would control) into the program but used a routine already contained in the program. As I have mentioned, this is normally not a realistic scenario. So we will now ditch the routine and see how we can inject our own code.</p>
-</div>
-<div class="paragraph">
-<p>First off, the injected code must of course be self-contained and position-independent, that is it must be able to run from any location in memory and must not rely on anything other than system calls. This type of code is usually known as <a href="https://en.wikipedia.org/wiki/Shellcode"><em>shellcode</em></a>. The shellcode we will use looks like this:</p>
-</div>
-<div class="listingblock">
-<div class="title">Listing 2. Our shellcode</div>
-<div class="content">
-<pre class="rouge highlight"><code data-lang="gas">.code32
-jmp     l_data
-l_code:
-mov     ebx, 2      # file descriptor, 2 = stderr
-pop     ecx         # pointer to buffer
-mov     edx, 30     # buffer size
-mov     eax, 4      # system call number, 4 = write
-int     0x80        # invoke system call
-ret
-
-l_data:
-call    l_code      # call to push the string's address onto the stack
-.asciz  "\x1b[31mYou've been pwned!!!\x1b[0m\n"</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>The term shellcode is actually a bit misleading here as we don&#8217;t start a shell but just print a string. As you can see, the code is quite simple. First, it performs the <a href="https://marcosvalle.github.io/osce/2018/05/06/JMP-CALL-POP-technique.html"><em>JMP-CALL-POP</em></a> trick to get the address of the string we want to print on the stack, then it invokes the <code>write</code> system call and returns (because it will be called as a method via the vtable). I translated the code into a raw binary (just the code, no headers and other stuff) using GNU <code>as</code> and <code>objdump</code> so that the Python <a href="https://github.com/wiemerc/Exploits/blob/main/exploit-uaf.py">script</a> that performs the exploit can use it.</p>
-</div>
-<div class="paragraph">
-<p>So how are we going to deliver this code to the victim program? We will use another chunk for that. But we need to find again a way to use a fixed start address (that we will put into the vtable), despite the start address of the chunk&#8217;s buffer being random. As you might have guessed, the heap spraying, described in the previous step, comes to the rescue once more. But instead of putting lots of copies of our code into the chunk (as we did with the vtable), we will use a technique known as <a href="https://en.wikipedia.org/wiki/NOP_slide"><em>NOP slide</em></a> (or <em>NOP sled</em>). You might be familiar with this technique if you know a bit about classical stack overflows. What it means is that we will create a large chunk (again 100MB), fill it almost completely with NOP instructions and put our shellcode at the very end of it. Then we will use an address that is guaranteed to be included in the chunk&#8217;s buffer as pointer to our code and put that address in our fake vtable. This address will definitely point to a NOP and when the CPU finally jumps to it, program execution will "slide" down the NOPs until it reaches the shellcode. Note that we don&#8217;t care about null bytes in the shellcode as we don&#8217;t deliver it as string but as base64-encoded data.</p>
-</div>
-<div class="paragraph">
-<p>In the following debugger session we will take a closer look at this fourth chunk containing the code.</p>
-</div>
-<div class="listingblock">
-<div class="title">Listing 3. Demo of the code injection</div>
-<div class="content">
-<pre>Breakpoint 1, main () at ./uaf-overwrite-vtable.cpp:179
-177             delete p_chunk;
-
-pwndbg&gt; x/3dx p_chunk
-0x8effc40:      0xe2000000      0x78787878      0x78787878  <i class="conum" data-value="1"></i><b>(1)</b>
-pwndbg&gt; x/8dx 0xe2000000
-0xe2000000:     0xdbc00000      0xdbc00000      0xdbc00000      0xdbc00000  <i class="conum" data-value="2"></i><b>(2)</b>
-0xe2000010:     0xdbc00000      0xdbc00000      0xdbc00000      0xdbc00000
-pwndbg&gt; x/8bx 0xdbc00000
-0xdbc00000:     0x90    0x90    0x90    0x90    0x90    0x90    0x90    0x90
-pwndbg&gt; x/8i 0xdbc00000
-   0xdbc00000:  nop  <i class="conum" data-value="3"></i><b>(3)</b>
-   0xdbc00001:  nop
-   0xdbc00002:  nop
-   0xdbc00003:  nop
-   0xdbc00004:  nop
-   0xdbc00005:  nop
-   0xdbc00006:  nop
-   0xdbc00007:  nop
-pwndbg&gt; x/12i (0xd9b52010 + 0x6400000 - 60)
-   0xdff51fd4:  nop
-   0xdff51fd5:  nop
-   0xdff51fd6:  nop
-   0xdff51fd7:  jmp    0xdff51fec  <i class="conum" data-value="4"></i><b>(4)</b>
-   0xdff51fd9:  mov    ebx,0x1
-   0xdff51fde:  pop    ecx
-   0xdff51fdf:  mov    edx,0x1e
-   0xdff51fe4:  mov    eax,0x4
-   0xdff51fe9:  int    0x80
-   0xdff51feb:  ret
-   0xdff51fec:  call   0xdff51fd9
-   0xdff51ff1:  sbb    ebx,DWORD PTR [ebx+0x33]
-pwndbg&gt; x/1s 0xdff51ff1
-0xdff51ff1:     "\033[31mYou've been pwned!!!\033[0m\n"  <i class="conum" data-value="5"></i><b>(5)</b></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>But before we do that we note that our overwritten object still contains a pointer to the chunk containing our fake vtables <strong>(1)</strong>, although with a different value than before (0xe2000000 instead of 0xe9000000). And of course the vtable looks different now as well. It contains pointers with the value 0xdbc00000 <strong>(2)</strong>. So what is there at this address? If we display the memory as instruction <strong>(3)</strong> we see lots of NOPs. So it seems the address is somewhere located in the buffer for the decoded fourth chunk, in the NOP slide. If we examine the end of this buffer (0xd9b52010 is the start address of the buffer, conveniently printed out by the program) we find our shellcode <strong>(4)</strong> together with the string it prints <strong>(5)</strong>.</p>
-</div>
-<div class="paragraph">
-<p>I arrived at these two addresses (0xe2000000 and 0xdbc00000) again by running the program a few times and choosing values that were always included in the respective buffers. Interestingly, the buffer for the fourth chunk was always located 100MB below the buffer for the third chunk. The following diagram shows the locations of the chunk&#8217;s buffers in memory and their relation (what points to what).</p>
-</div>
-<div class="imageblock">
-<div class="content">
-<img src="https://wiemerc.github.io/images/uaf/chunk-buffers.svg" alt="chunk buffers">
-</div>
-<div class="title">Figure 2. Location of the chunk buffers in memory and their relation</div>
-</div>
-<div class="paragraph">
-<p>So when the destructor is finally called on the overwritten object, via the pointer in the vtable, the CPU will jump right into the NOP slide, execute all the NOPs until it reaches the shellcode and then the shellcode itself.</p>
-</div>
-<div class="paragraph">
-<p>Except&#8230;&#8203; it doesn&#8217;t, not yet at least. Instead, the program terminates with a segmentation fault. Why is that? Another security measure employed by modern CPUs and operating systems keeps us from succeeding. It is commonly known as <a href="https://en.wikipedia.org/wiki/Executable_space_protection#Windows"><em>data execution prevention (DEP)</em></a> or <a href="https://en.wikipedia.org/wiki/W%5EX"><em>W^X</em></a> and means that any memory regions that are writeable by a program (on the heap or stack) are by default not executable (implemented via the <a href="https://en.wikipedia.org/wiki/NX_bit"><em>NX bit</em></a>). As the chunk&#8217;s buffer is of course writeable, the CPU will not execute the code in it but generate an exception which leads in turn to the segmentation fault.</p>
-</div>
-<div class="paragraph">
-<p>So how can we get around this security measure? In the third part of this series I will show you a very clever technique that works by not injecting code into the program but something else. But for now, we will just play a bit unfair and change the permissions of the chunk&#8217;s buffer. This can be done very easily in the debugger as you can see below.</p>
-</div>
-<div class="listingblock">
-<div class="title">Listing 4. Changing the permissions of the chunk&#8217;s buffer</div>
-<div class="content">
-<pre>pwndbg&gt; vmmap 0xd9b52010  <i class="conum" data-value="1"></i><b>(1)</b>
-     Start        End Perm     Size Offset File
-0xd9b52000 0xf6e00000 rw-p 1d2ae000      0 [anon_d9b52] +0x0
-pwndbg&gt; call (long) mprotect(0xd9b52000, 0x1d2ae000, 0x7)  <i class="conum" data-value="2"></i><b>(2)</b>
-$4 = 0</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>First I use the <code>vmmap</code> command (provided by the <a href="https://github.com/pwndbg/pwndbg"><em>pwndbg</em></a> extension) to check the permissions of the buffer <strong>(1)</strong> and you can see that it&#8217;s indeed not executable (it misses the "x" bit). Then I call the <code>mprotect</code> system call <strong>(2)</strong> to change the permissions (I don&#8217;t use the start address and size of the buffer but of the complete memory mapping, 0x7 means "rwx"). After that the exploit actually works.</p>
-</div>
-<div class="paragraph">
-<p>This is the end of the second article in this series. As I already said we will defeat W^X in the third article. Stay tuned if you liked it so far&#8230;&#8203;</p>
-</div>
-</div>
-</div>                </article>
-            </aside><!-- /#featured -->
-                <section id="content" class="body">
-                    <h1>Other articles</h1>
-                    <ol id="posts-list" class="hfeed">
+<p>In step 1 in the <a href="https://wiemerc.github.io/anatomy-of-a-modern-memory-corruption-exploit-part-i.html">first</a> article of this series we had disabled ASLR in order to have the buffer for the decoded third chunk …</p></div></div></div>
+                <a class="readmore" href="https://wiemerc.github.io/anatomy-of-a-modern-memory-corruption-exploit-part-ii.html">read more</a>
+                </div><!-- /.entry-content -->
+            </article></li>
 
             <li><article class="hentry">
                 <header>
