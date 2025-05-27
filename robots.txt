@@ -1,0 +1,4 @@
+User-agent: *
+Disallow:
+
+Sitemap: https://wiemerc.github.io/sitemap.xml
